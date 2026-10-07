@@ -1,0 +1,103 @@
+Build the initial foundation for a full-stack web application called CareerPath AI.
+
+Project tagline:
+"Your skills. Your goal. Your roadmap."
+
+Purpose:
+CareerPath AI is an AI-powered Student Career and Skill Planner. It helps students identify skill gaps between their current skills and a target career, then generates a personalized learning roadmap.
+
+Tech stack:
+- Frontend: React + Vite
+- Backend: Node.js + Express
+- Database: Supabase PostgreSQL
+- Authentication: JWT + bcrypt
+- Validation: Zod
+- AI: Google Gemini API through the backend only
+- HTTP client: Axios
+- Styling: Tailwind CSS
+- Icons: Lucide React
+
+Architecture:
+Use a clean full-stack structure with separate client and server directories.
+
+Create:
+
+/client
+  /src
+    /components
+    /pages
+    /layouts
+    /services
+    /hooks
+    /utils
+
+/server
+  /src
+    /controllers
+    /routes
+    /middleware
+    /services
+    /models
+    /utils
+    /config
+
+Requirements for this first step:
+
+1. Create the React + Vite frontend.
+2. Create the Express backend.
+3. Configure frontend and backend to run separately.
+4. Add a basic Express health-check endpoint:
+   GET /api/health
+
+   Response:
+   {
+     "success": true,
+     "message": "CareerPath AI API is running"
+   }
+
+5. Create a simple frontend landing page containing:
+   - CareerPath AI
+   - "Your skills. Your goal. Your roadmap."
+   - Short description
+   - Get Started button
+   - Login button
+
+6. Create placeholder pages:
+   - Login
+   - Register
+   - Dashboard
+   - Profile
+   - Skills
+   - Career Goal
+   - Roadmap
+
+7. Add React routing.
+
+8. Add environment variable support.
+
+9. Create:
+   server/.env.example
+
+   Include placeholders for:
+   PORT=
+   SUPABASE_URL=
+   SUPABASE_ANON_KEY=
+   SUPABASE_SERVICE_ROLE_KEY=
+   JWT_SECRET=
+   GEMINI_API_KEY=
+
+10. NEVER hardcode API keys or secrets.
+
+11. Add a README.md explaining:
+   - Project purpose
+   - Tech stack
+   - Folder structure
+   - Local setup
+   - Environment variables
+   - How to run frontend
+   - How to run backend
+
+12. Keep the implementation clean and beginner-readable.
+
+Do not implement the database, authentication, or Gemini functionality yet.
+This step is only for creating and verifying the full-stack project foundation.

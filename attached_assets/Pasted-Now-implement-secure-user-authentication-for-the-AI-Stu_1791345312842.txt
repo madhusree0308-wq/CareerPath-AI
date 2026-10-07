@@ -1,0 +1,141 @@
+Now implement secure user authentication for the AI Student Career & Skill Planner.
+
+Use:
+- Express.js
+- Supabase PostgreSQL
+- bcrypt
+- jsonwebtoken
+- Zod
+- JWT authentication middleware
+
+Requirements:
+
+1. Create authentication routes:
+
+POST /api/auth/register
+POST /api/auth/login
+GET /api/auth/me
+
+2. REGISTER
+
+Request:
+{
+  "name": "Test Student",
+  "email": "student@example.com",
+  "password": "Password123"
+}
+
+Validation:
+- name is required
+- email must be a valid email
+- password must be at least 8 characters
+
+Before storing:
+- Check whether the email already exists.
+- Hash the password using bcrypt.
+- Never store the plain-text password.
+- Store the hash in users.password_hash.
+
+Return a safe JSON response without password_hash.
+
+3. LOGIN
+
+Request:
+{
+  "email": "student@example.com",
+  "password": "Password123"
+}
+
+Steps:
+- Find the user by email.
+- Compare the password using bcrypt.
+- If invalid, return HTTP 401.
+- Generate a JWT containing the user's id and email.
+- Use JWT_SECRET from the server environment variables.
+- Set a reasonable JWT expiration time.
+- Never return the password or password_hash.
+
+Return:
+{
+  "success": true,
+  "token": "...",
+  "user": {
+    "id": "...",
+    "name": "...",
+    "email": "..."
+  }
+}
+
+4. AUTH MIDDLEWARE
+
+Create:
+server/middleware/auth.js
+
+The middleware must:
+- Read the Authorization header.
+- Expect:
+  Bearer <JWT>
+- Verify the token using JWT_SECRET.
+- Attach the authenticated user's id to req.user.
+- Reject missing or invalid tokens with HTTP 401.
+
+5. GET /api/auth/me
+
+This endpoint must be protected by the authentication middleware.
+
+Return the currently authenticated user's:
+- id
+- name
+- email
+- created_at
+
+6. SECURITY
+
+- JWT_SECRET must come from an environment variable.
+- Never hard-code JWT_SECRET.
+- Never expose JWT_SECRET to the React frontend.
+- Never return password_hash.
+- Never log passwords or JWT secrets.
+- Use appropriate HTTP status codes.
+- Use Zod validation.
+- Add centralized error handling where appropriate.
+
+7. ENVIRONMENT
+
+Use:
+JWT_SECRET
+
+If it does not exist, do not hard-code a fallback secret.
+Tell me to add it to Replit Secrets.
+
+8. FILE STRUCTURE
+
+Keep authentication modular:
+
+server/
+  routes/
+    auth.js
+  middleware/
+    auth.js
+  config/
+    supabase.js
+  utils/
+    validation.js
+
+Adapt the structure if the existing project uses a slightly different organization.
+
+9. TESTING
+
+After implementation, test:
+- successful registration
+- duplicate email registration
+- successful login
+- wrong password
+- invalid email
+- short password
+- protected /api/auth/me with valid JWT
+- /api/auth/me without JWT
+
+Do not implement career goals, skills, roadmaps, or Gemini yet.
+Do not change the existing UI.
+Do not deploy yet.

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "CareerPath AI"
+description = "An AI-powered student career and skill planner foundation with a landing page, routed starter screens, and a health-checked API."
+version = "1.0.0"
+id = "artifacts/careerpath-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21588
+
+[services.development]
+run = "pnpm --filter @workspace/careerpath-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/careerpath-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/careerpath-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21588"
+BASE_PATH = "/"

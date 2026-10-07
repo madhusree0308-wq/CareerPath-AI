@@ -1,0 +1,2 @@
+- [Supabase URL normalization](supabase-url-normalization.md) — strip trailing `/rest/v1` before `createClient`; absolute-path health probes can hide a malformed base URL.
+- [Legacy Supabase profile schema](student-profile-schema.md) — the existing profile table uses `education`/`college`; preserve them and add missing fields non-destructively.

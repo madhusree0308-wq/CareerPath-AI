@@ -1,0 +1,152 @@
+Now implement Student Profile CRUD for the AI Student Career & Skill Planner.
+
+Use the existing:
+- Express backend
+- Supabase PostgreSQL
+- JWT authentication middleware
+- Zod validation
+
+Database table:
+student_profiles
+
+Only authenticated users must be able to access these endpoints.
+
+Create these routes:
+
+POST /api/profile
+GET /api/profile
+PUT /api/profile
+DELETE /api/profile
+
+Requirements:
+
+1. POST /api/profile
+
+Create a profile for the authenticated user.
+
+Request:
+{
+  "education_level": "Undergraduate",
+  "institution": "ABC University",
+  "degree": "B.Tech",
+  "branch": "Computer Science",
+  "graduation_year": 2027,
+  "interests": "Artificial Intelligence, Web Development",
+  "bio": "Computer science student interested in AI."
+}
+
+Use req.user.id from the JWT middleware as user_id.
+
+Do NOT allow the frontend to provide or override user_id.
+
+Validate the input using Zod.
+
+Return the created profile.
+
+2. GET /api/profile
+
+Return the profile belonging only to the authenticated user.
+
+Use req.user.id.
+
+If no profile exists, return an appropriate 404 response.
+
+3. PUT /api/profile
+
+Update the authenticated user's profile.
+
+Do not allow changing:
+- id
+- user_id
+- created_at
+
+Update:
+- education_level
+- institution
+- degree
+- branch
+- graduation_year
+- interests
+- bio
+
+Update updated_at.
+
+4. DELETE /api/profile
+
+Delete the authenticated user's profile.
+
+Only the profile belonging to req.user.id can be deleted.
+
+Return a clear success response.
+
+5. SECURITY
+
+Every route must use authentication middleware.
+
+Never accept user_id from the request body.
+
+A user must never be able to read, update, or delete another user's profile.
+
+Use parameterized/safe Supabase queries.
+
+6. VALIDATION
+
+Use Zod.
+
+Rules:
+- education_level: optional string
+- institution: optional string
+- degree: optional string
+- branch: optional string
+- graduation_year: optional integer
+- interests: optional string
+- bio: optional string
+
+Return HTTP 400 for invalid input.
+
+7. ERROR HANDLING
+
+Use appropriate HTTP status codes:
+- 201 for successful creation
+- 200 for successful read/update/delete
+- 400 for validation errors
+- 401 for unauthenticated requests
+- 404 when profile does not exist
+- 500 for unexpected server errors
+
+Use consistent JSON responses.
+
+8. CODE STRUCTURE
+
+Keep the code modular.
+
+Create or use:
+
+server/routes/profile.js
+
+If needed, create a controller/service layer rather than putting all database logic directly in the route.
+
+Register the routes in the main Express server.
+
+9. TEST
+
+Test all operations:
+
+POST /api/profile
+GET /api/profile
+PUT /api/profile
+DELETE /api/profile
+
+Also verify:
+- Request without JWT → 401
+- User cannot access another user's profile
+- Invalid graduation_year → 400
+- Profile creation works
+- Profile update works
+- Profile deletion works
+
+Do not implement career goals yet.
+Do not implement skills yet.
+Do not add Gemini yet.
+Do not change the frontend UI yet.
+Do not deploy yet.

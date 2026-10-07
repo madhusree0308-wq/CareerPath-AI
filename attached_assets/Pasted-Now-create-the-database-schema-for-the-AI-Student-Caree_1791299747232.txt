@@ -1,0 +1,108 @@
+Now create the database schema for the AI Student Career & Skill Planner
+using our existing Supabase PostgreSQL connection.
+
+Create exactly these 7 tables:
+
+1. users
+Columns:
+- id UUID primary key
+- name VARCHAR(100) NOT NULL
+- email VARCHAR(255) UNIQUE NOT NULL
+- password_hash TEXT NOT NULL
+- created_at TIMESTAMPTZ DEFAULT NOW()
+- updated_at TIMESTAMPTZ DEFAULT NOW()
+
+2. student_profiles
+Columns:
+- id UUID primary key
+- user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- education_level VARCHAR(100)
+- institution VARCHAR(255)
+- degree VARCHAR(255)
+- branch VARCHAR(255)
+- graduation_year INTEGER
+- interests TEXT
+- bio TEXT
+- created_at TIMESTAMPTZ DEFAULT NOW()
+- updated_at TIMESTAMPTZ DEFAULT NOW()
+
+3. career_goals
+Columns:
+- id UUID primary key
+- user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- target_role VARCHAR(255) NOT NULL
+- target_industry VARCHAR(255)
+- target_company VARCHAR(255)
+- target_salary VARCHAR(100)
+- timeline_months INTEGER
+- description TEXT
+- status VARCHAR(50) DEFAULT 'active'
+- created_at TIMESTAMPTZ DEFAULT NOW()
+- updated_at TIMESTAMPTZ DEFAULT NOW()
+
+4. skills
+Columns:
+- id UUID primary key
+- user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- skill_name VARCHAR(150) NOT NULL
+- category VARCHAR(100)
+- proficiency_level VARCHAR(50)
+- years_experience NUMERIC(4,1) DEFAULT 0
+- created_at TIMESTAMPTZ DEFAULT NOW()
+- updated_at TIMESTAMPTZ DEFAULT NOW()
+
+5. skill_assessments
+Columns:
+- id UUID primary key
+- user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- career_goal_id UUID REFERENCES career_goals(id) ON DELETE SET NULL
+- current_skills JSONB
+- required_skills JSONB
+- skill_gaps JSONB
+- overall_score NUMERIC(5,2)
+- assessment_summary TEXT
+- created_at TIMESTAMPTZ DEFAULT NOW()
+- updated_at TIMESTAMPTZ DEFAULT NOW()
+
+6. learning_roadmaps
+Columns:
+- id UUID primary key
+- user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- career_goal_id UUID REFERENCES career_goals(id) ON DELETE CASCADE
+- title VARCHAR(255) NOT NULL
+- description TEXT
+- roadmap_data JSONB
+- duration_months INTEGER
+- status VARCHAR(50) DEFAULT 'active'
+- created_at TIMESTAMPTZ DEFAULT NOW()
+- updated_at TIMESTAMPTZ DEFAULT NOW()
+
+7. ai_outputs
+Columns:
+- id UUID primary key
+- user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- output_type VARCHAR(100) NOT NULL
+- input_data JSONB
+- output_data JSONB
+- model VARCHAR(100)
+- created_at TIMESTAMPTZ DEFAULT NOW()
+- updated_at TIMESTAMPTZ DEFAULT NOW()
+
+Database requirements:
+- Use UUID generation for primary keys.
+- Add appropriate indexes on user_id and email.
+- Add foreign-key relationships as specified.
+- Add created_at and updated_at timestamps.
+- Ensure updated_at is automatically updated when records change.
+- Keep user data isolated using user_id.
+- Do not store plain-text passwords.
+- Do not add any real API keys to the database.
+- Do not expose the Supabase service role key to the frontend.
+
+Create the schema in Supabase PostgreSQL.
+
+After creating the tables, verify that all 7 tables exist successfully.
+
+Do not build the frontend yet.
+Do not add Gemini yet.
+Do not deploy yet.
