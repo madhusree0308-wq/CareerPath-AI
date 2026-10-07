@@ -4,12 +4,16 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import ProfilePage from '@/pages/profile';
 import { Route, Switch, useLocation, Router as WouterRouter, Link } from 'wouter';
 import { ArrowRight, ArrowUpRight, Compass, Flag, Layers3, Route as RouteIcon, Target, UserRound, Wrench } from 'lucide-react';
 import {
   getGetCareerPathHealthQueryKey,
   useGetCareerPathHealth,
+  useLoginUser,
+  useRegisterUser,
 } from '@workspace/api-client-react';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 
 const queryClient = new QueryClient();
 
@@ -32,21 +36,66 @@ function Brand() {
 
 function Header() {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
   const isAuth = location === '/login' || location === '/register';
+
   return (
     <header className="topbar">
       <Brand />
       <nav className="nav-links" aria-label="Main navigation">
         {destinations.map((item) => (
-          <Link key={item.href} href={item.href} className={`nav-link ${location === item.href ? 'active' : ''}`} data-testid={`link-${item.href.slice(1)}`}>
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`nav-link ${location === item.href ? 'active' : ''}`}
+            data-testid={`link-${item.href.slice(1)}`}
+          >
             {item.label}
           </Link>
         ))}
       </nav>
       <div className="nav-actions">
-        <Link href="/login" className={`button button-quiet ${location === '/login' ? 'active' : ''}`} data-testid="link-login">Log in</Link>
-        {!isAuth && <Link href="/register" className="button button-primary" data-testid="link-get-started">Get started <ArrowRight aria-hidden="true" /></Link>}
-        {isAuth && <Link href="/register" className="button button-primary" data-testid="link-register">Create account <ArrowRight aria-hidden="true" /></Link>}
+        {user ? (
+          <>
+            <Link
+              href="/profile"
+              className="button button-quiet"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              data-testid="link-user-profile"
+            >
+              <UserRound style={{ width: 14, height: 14 }} />
+              <span>{user.name.split(' ')[0]}</span>
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="button button-outline"
+              data-testid="button-logout"
+            >
+              Log out
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              href="/login"
+              className={`button button-quiet ${location === '/login' ? 'active' : ''}`}
+              data-testid="link-login"
+            >
+              Log in
+            </Link>
+            {!isAuth && (
+              <Link href="/register" className="button button-primary" data-testid="link-get-started">
+                Get started <ArrowRight aria-hidden="true" />
+              </Link>
+            )}
+            {isAuth && (
+              <Link href="/register" className="button button-primary" data-testid="link-register">
+                Create account <ArrowRight aria-hidden="true" />
+              </Link>
+            )}
+          </>
+        )}
       </div>
     </header>
   );
@@ -156,11 +205,6 @@ const pageContent: Record<string, PageInfo> = {
     panel: 'Your path is ready when you are', detail: 'This space will bring your profile, skills, career direction, and roadmap into one simple view. Begin with the part you know best.',
     Icon: Compass, next: { label: 'Add your profile', href: '/profile' },
   },
-  '/profile': {
-    number: '02', eyebrow: 'Step one · your story', title: 'Start with what makes you, you.', summary: 'A few details help put your interests, learning, and experience in context.',
-    panel: 'Your profile starts here', detail: 'Share what you’re studying, what you enjoy, and the experiences you already have. There is no single right way to build a career.',
-    Icon: UserRound, next: { label: 'Explore your skills', href: '/skills' },
-  },
   '/skills': {
     number: '03', eyebrow: 'Step two · your strengths', title: 'Notice the skills you already use.', summary: 'Skills come from classes, projects, jobs, volunteering, and the things you do for fun.',
     panel: 'Your skills, gathered in one place', detail: 'When you’re ready, list the abilities you bring today. Seeing them clearly is a practical way to begin closing the distance to a goal.',
@@ -212,11 +256,76 @@ function WorkspacePage({ info }: { info: PageInfo }) {
 
 function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const isRegister = mode === 'register';
-  const [notice, setNotice] = useState('');
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const [, setLocation] = useLocation();
+  const { login } = useAuth();
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [notice, setNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const loginMutation = useLoginUser();
+  const registerMutation = useRegisterUser();
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice('Account access is not connected yet. Your information has not been sent.');
+    setNotice(null);
+    setIsSubmitting(true);
+
+    try {
+      if (isRegister) {
+        const regRes = await registerMutation.mutateAsync({
+          data: {
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            password,
+          },
+        });
+
+        if (regRes.success) {
+          // Auto login upon successful registration
+          const loginRes = await loginMutation.mutateAsync({
+            data: {
+              email: email.trim().toLowerCase(),
+              password,
+            },
+          });
+
+          if (loginRes.success && loginRes.token && loginRes.user) {
+            login(loginRes.token, loginRes.user);
+            setLocation('/profile');
+            return;
+          }
+        }
+      } else {
+        const loginRes = await loginMutation.mutateAsync({
+          data: {
+            email: email.trim().toLowerCase(),
+            password,
+          },
+        });
+
+        if (loginRes.success && loginRes.token && loginRes.user) {
+          login(loginRes.token, loginRes.user);
+          setLocation('/profile');
+          return;
+        }
+      }
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string }; message?: string };
+      const msg =
+        apiErr.data?.message ||
+        apiErr.message ||
+        (isRegister
+          ? 'Failed to create account. Please check your details.'
+          : 'Invalid email or password. Please try again.');
+      setNotice({ type: 'error', text: msg });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
+
   return (
     <main className="auth-layout">
       <section className="auth-aside">
@@ -228,15 +337,92 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         <div className="auth-card">
           <h2>{isRegister ? 'Start your path' : 'Welcome back'}</h2>
           <p>{isRegister ? 'Create a place to gather your ideas and next steps.' : 'Your career exploration is ready when you are.'}</p>
-          {notice && <div className="auth-notice" role="status" data-testid="status-auth-notice">{notice}</div>}
-          <form onSubmit={submit}>
-            {isRegister && <label className="field">Your name<input name="name" autoComplete="name" placeholder="How should we call you?" required data-testid="input-name" /></label>}
-            <label className="field">Email address<input name="email" type="email" autoComplete="email" placeholder="you@example.com" required data-testid="input-email" /></label>
-            <label className="field">Password<input name="password" type="password" autoComplete={isRegister ? 'new-password' : 'current-password'} placeholder="At least 8 characters" minLength={8} required data-testid="input-password" /></label>
-            <button className="button button-primary auth-submit" type="submit" data-testid="button-auth-submit">{isRegister ? 'Create account' : 'Log in'} <ArrowRight aria-hidden="true" /></button>
+          {notice && (
+            <div
+              className="auth-notice"
+              role={notice.type === 'error' ? 'alert' : 'status'}
+              style={{
+                background: notice.type === 'error' ? '#fcf0ed' : '#e9efe5',
+                color: notice.type === 'error' ? '#9e4431' : '#28584c',
+                border: `1px solid ${notice.type === 'error' ? '#f2c8be' : '#c7d8cb'}`,
+              }}
+              data-testid="status-auth-notice"
+            >
+              {notice.text}
+            </div>
+          )}
+          <form onSubmit={submit} data-testid={isRegister ? 'form-register' : 'form-login'}>
+            {isRegister && (
+              <label className="field">
+                Your name
+                <input
+                  name="name"
+                  autoComplete="name"
+                  placeholder="How should we call you?"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  data-testid="input-name"
+                />
+              </label>
+            )}
+            <label className="field">
+              Email address
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                data-testid="input-email"
+              />
+            </label>
+            <label className="field">
+              Password
+              <input
+                name="password"
+                type="password"
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
+                placeholder="At least 8 characters"
+                minLength={8}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                data-testid="input-password"
+              />
+            </label>
+            <button
+              className="button button-primary auth-submit"
+              type="submit"
+              disabled={isSubmitting}
+              data-testid="button-auth-submit"
+            >
+              {isSubmitting
+                ? 'Processing...'
+                : isRegister
+                  ? 'Create account'
+                  : 'Log in'}{' '}
+              <ArrowRight aria-hidden="true" />
+            </button>
           </form>
           <div className="auth-bottom">
-            {isRegister ? <>Already have an account? <Link href="/login" data-testid="link-auth-login">Log in</Link></> : <>New to CareerPath AI? <Link href="/register" data-testid="link-auth-register">Get started</Link></>}
+            {isRegister ? (
+              <>
+                Already have an account?{' '}
+                <Link href="/login" data-testid="link-auth-login">
+                  Log in
+                </Link>
+              </>
+            ) : (
+              <>
+                New to CareerPath AI?{' '}
+                <Link href="/register" data-testid="link-auth-register">
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -261,6 +447,7 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route path="/login"><AuthPage mode="login" /></Route>
           <Route path="/register"><AuthPage mode="register" /></Route>
+          <Route path="/profile" component={ProfilePage} />
           {Object.entries(pageContent).map(([path, info]) => <Route key={path} path={path}><WorkspacePage info={info} /></Route>)}
           <Route component={NotFound} />
         </Switch>
@@ -272,12 +459,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
