@@ -97,7 +97,7 @@ export default function DashboardPage() {
       ...dashboard.skills.map((skill) => ({
         id: `skill-${skill.id}`,
         type: 'Skill',
-        title: skill.name || 'Skill',
+        title: skill.skill_name || 'Skill',
         description: skill.skill_level
           ? `Level: ${skill.skill_level}`
           : 'Current skill',

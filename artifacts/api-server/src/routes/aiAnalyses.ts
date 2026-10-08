@@ -378,7 +378,7 @@ Requirements:
 - Create 12 to 16 tasks.
 - Cover TypeScript, Node.js/Express, REST APIs, PostgreSQL,
   authentication/security, testing, Docker/DevOps, Redis,
-  and AI/LLM integration.
+  and Gemini API integration only. Do not recommend or mention OpenAI, Anthropic, or other LLM providers.
 - Organize tasks progressively from fundamentals to project work.
 - Use week_number values from 1 to 12.
 - priority must be "high", "medium", or "low".
@@ -693,7 +693,7 @@ Requirements:
 - Create 12 to 16 tasks.
 - Cover TypeScript, Node.js/Express, REST APIs, PostgreSQL,
   authentication/security, testing, Docker/DevOps, Redis,
-  and AI/LLM integration.
+  and Gemini API integration only. Do not recommend or mention OpenAI, Anthropic, or other LLM providers.
 - Organize tasks progressively from fundamentals to project work.
 - Use week_number values from 1 to 12.
 - priority must be "high", "medium", or "low".
@@ -1038,3 +1038,4 @@ router.delete("/ai-analyses/:id", requireAuth, async (req, res) => {
 });
 
 export default router;
+
