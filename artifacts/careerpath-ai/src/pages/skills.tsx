@@ -76,7 +76,7 @@ export default function SkillsPage() {
   async function deleteSkill(id: string) {
     if (!token) return;
 
-    const response = await fetch(`/api/skills/${id}`, {
+    const response = await fetch(apiUrl(`/api/skills/${id}`), {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -194,6 +194,7 @@ export default function SkillsPage() {
     </main>
   );
 }
+
 
 
 

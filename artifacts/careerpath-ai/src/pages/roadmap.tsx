@@ -50,7 +50,7 @@ export default function RoadmapPage() {
     if (!token) return;
 
     const response = await fetch(
-      `/api/roadmap-tasks?roadmap_id=${roadmap.id}`,
+      apiUrl(`/api/roadmap-tasks?roadmap_id=${roadmap.id}`),
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -182,7 +182,7 @@ export default function RoadmapPage() {
 
     try {
       const response = await fetch(
-        `/api/roadmaps/${selectedRoadmap.id}`,
+        apiUrl(`/api/roadmaps/${selectedRoadmap.id}`),
         {
           method: 'PUT',
           headers: {
@@ -234,7 +234,7 @@ export default function RoadmapPage() {
 
     try {
       const response = await fetch(
-        `/api/roadmaps/${selectedRoadmap.id}`,
+        apiUrl(`/api/roadmaps/${selectedRoadmap.id}`),
         {
           method: 'DELETE',
           headers: {
@@ -274,7 +274,7 @@ export default function RoadmapPage() {
 
     try {
       const response = await fetch(
-        `/api/roadmap-tasks/${task.id}`,
+        apiUrl(`/api/roadmap-tasks/${task.id}`),
         {
           method: 'PUT',
           headers: {
@@ -315,7 +315,7 @@ export default function RoadmapPage() {
 
     try {
       const response = await fetch(
-        `/api/roadmap-tasks/${task.id}`,
+        apiUrl(`/api/roadmap-tasks/${task.id}`),
         {
           method: 'DELETE',
           headers: {
@@ -661,6 +661,8 @@ export default function RoadmapPage() {
     </main>
   );
 }
+
+
 
 
 

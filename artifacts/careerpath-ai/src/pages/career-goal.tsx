@@ -89,7 +89,7 @@ export default function CareerGoalPage() {
   async function deleteGoal(id: string) {
     if (!token) return;
 
-    const response = await fetch(`/api/career-goals/${id}`, {
+    const response = await fetch(apiUrl(`/api/career-goals/${id}`), {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -258,6 +258,7 @@ export default function CareerGoalPage() {
     </main>
   );
 }
+
 
 
 
