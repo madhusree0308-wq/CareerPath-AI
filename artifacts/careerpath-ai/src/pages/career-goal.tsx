@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '@/lib/api';
 import { Link } from 'wouter';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -27,7 +28,7 @@ export default function CareerGoalPage() {
   async function loadGoals() {
     if (!token) return;
 
-    const response = await fetch('/api/career-goals', {
+    const response = await fetch(apiUrl('/api/career-goals'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -48,7 +49,7 @@ export default function CareerGoalPage() {
     setMessage('');
 
     try {
-      const response = await fetch('/api/career-goals', {
+      const response = await fetch(apiUrl('/api/career-goals'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -257,3 +258,7 @@ export default function CareerGoalPage() {
     </main>
   );
 }
+
+
+
+

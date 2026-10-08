@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiUrl } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
 type CareerGoal = {
@@ -75,12 +76,12 @@ export default function RoadmapPage() {
 
     try {
       const [goalsResponse, roadmapsResponse] = await Promise.all([
-        fetch('/api/career-goals', {
+        fetch(apiUrl('/api/career-goals'), {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }),
-        fetch('/api/roadmaps', {
+        fetch(apiUrl('/api/roadmaps'), {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -132,7 +133,7 @@ export default function RoadmapPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/ai-analyses/generate-roadmap', {
+      const response = await fetch(apiUrl('/api/ai-analyses/generate-roadmap'), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -660,3 +661,6 @@ export default function RoadmapPage() {
     </main>
   );
 }
+
+
+

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '@/lib/api';
 import { Link } from 'wouter';
 import { ArrowLeft, Brain, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -52,8 +53,8 @@ export default function SkillAssessmentPage() {
       };
 
       const [skillsResponse, goalsResponse] = await Promise.all([
-        fetch('/api/skills', { headers }),
-        fetch('/api/career-goals', { headers }),
+        fetch(apiUrl('/api/skills'), { headers }),
+        fetch(apiUrl('/api/career-goals'), { headers }),
       ]);
 
       if (skillsResponse.ok) {
@@ -112,7 +113,7 @@ export default function SkillAssessmentPage() {
     setAnalysis(null);
 
     try {
-      const response = await fetch('/api/ai-analyses/generate', {
+      const response = await fetch(apiUrl('/api/ai-analyses/generate'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -370,3 +371,5 @@ export default function SkillAssessmentPage() {
     </main>
   );
 }
+
+

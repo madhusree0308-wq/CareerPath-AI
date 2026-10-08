@@ -1,5 +1,11 @@
+import { apiUrl } from '@/lib/api';
+
 import { useEffect, useMemo, useState } from 'react';
+import { apiUrl } from '@/lib/api';
+
 import { Link } from 'wouter';
+import { apiUrl } from '@/lib/api';
+
 import {
   ArrowRight,
   Target,
@@ -12,6 +18,8 @@ import {
   Clock3,
   ListTodo,
 } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
+
 import { useAuth } from '@/context/AuthContext';
 
 type DashboardData = {
@@ -40,7 +48,7 @@ export default function DashboardPage() {
         setLoading(true);
         setError('');
 
-        const response = await fetch('http://localhost:5000/api/dashboard', {
+        const response = await fetch(apiUrl('/api/dashboard'), {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -369,3 +377,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
