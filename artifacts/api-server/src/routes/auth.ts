@@ -42,14 +42,20 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .eq("email", email)
     .maybeSingle();
 
-  if (lookupError) {
+ if (lookupError) {
     req.log.error(
-      { errorCode: lookupError.code },
-      "Could not check for an existing account",
+        {
+            errorCode: lookupError.code,
+            errorMessage: lookupError.message,
+            errorDetails: lookupError.details,
+            errorHint: lookupError.hint,
+        },
+        "Could not check for an existing account",
     );
-    authError(res, 500, "Could not register account");
+
+    authError(res, 500, "Could not check for an existing account");
     return;
-  }
+}
 
   if (existingUser) {
     authError(res, 409, "Email is already registered");

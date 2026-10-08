@@ -1,10 +1,15 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
+import SkillsPage from '@/pages/skills';
+import ProfilePage from '@/pages/profile';
+import RoadmapPage from '@/pages/roadmap';
+import CareerGoalPage from '@/pages/career-goal';
+import SkillAssessmentPage from '@/pages/skill-assessment';
+import DashboardPage from '@/pages/dashboard';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import ProfilePage from '@/pages/profile';
 import { Route, Switch, useLocation, Router as WouterRouter, Link } from 'wouter';
 import { ArrowRight, ArrowUpRight, Compass, Flag, Layers3, Route as RouteIcon, Target, UserRound, Wrench } from 'lucide-react';
 import {
@@ -22,10 +27,9 @@ const destinations = [
   { href: '/profile', label: 'Profile' },
   { href: '/skills', label: 'Skills' },
   { href: '/career-goal', label: 'Career goal' },
+  { href: '/skill-assessment', label: 'Skill Assessment' },
   { href: '/roadmap', label: 'Roadmap' },
-];
-
-function Brand() {
+];function Brand() {
   return (
     <Link href="/" className="brand" aria-label="CareerPath AI home" data-testid="link-home-brand">
       <span className="brand-mark"><RouteIcon aria-hidden="true" /></span>
@@ -448,7 +452,21 @@ function Router() {
           <Route path="/login"><AuthPage mode="login" /></Route>
           <Route path="/register"><AuthPage mode="register" /></Route>
           <Route path="/profile" component={ProfilePage} />
-          {Object.entries(pageContent).map(([path, info]) => <Route key={path} path={path}><WorkspacePage info={info} /></Route>)}
+          <Route path="/dashboard" component={DashboardPage} />
+	  <Route path="/skills" component={SkillsPage} />
+          <Route path="/roadmap" component={RoadmapPage} />
+	  <Route path="/career-goal" component={CareerGoalPage} />
+	  <Route
+  		path="/skill-assessment"
+  		component={SkillAssessmentPage}
+	  />
+{Object.entries(pageContent)
+  .filter(([path]) => path !== '/dashboard')
+  .map(([path, info]) => (
+    <Route key={path} path={path}>
+      <WorkspacePage info={info} />
+    </Route>
+  ))}
           <Route component={NotFound} />
         </Switch>
       </SiteFrame>
