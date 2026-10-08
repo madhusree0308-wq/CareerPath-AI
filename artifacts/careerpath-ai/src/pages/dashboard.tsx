@@ -1,4 +1,3 @@
-import { apiUrl } from '@/lib/api';
 
 import { useEffect, useMemo, useState } from 'react';
 
@@ -18,7 +17,6 @@ import {
   Clock3,
   ListTodo,
 } from 'lucide-react';
-import { apiUrl } from '@/lib/api';
 
 import { useAuth } from '@/context/AuthContext';
 
@@ -377,5 +375,6 @@ export default function DashboardPage() {
     </main>
   );
 }
+
 
 
