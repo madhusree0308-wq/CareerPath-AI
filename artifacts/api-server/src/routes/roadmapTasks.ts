@@ -1,298 +1,219 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+
+import { Router, type IRouter } from "express";
 import { supabase } from "../config/supabase.js";
 import { requireAuth } from "../middlewares/auth.js";
 
 const router: IRouter = Router();
 
-function sendError(res: Response, status: number, message: string): void {
-    res.status(status).json({ success: false, message });
-}
+router.use(requireAuth);
 
-function getUserId(req: Request, res: Response): string | null {
-    const userId = req.user?.id;
-
-    if (!userId) {
-        sendError(res, 401, "Authentication required");
-        return null;
-    }
-
-    return userId;
-}
-
-// CREATE roadmap task
-router.post("/roadmap-tasks", requireAuth, async (req, res) => {
-    const userId = getUserId(req, res);
-    if (!userId) return;
-
-    const {
-        roadmap_id,
-        title,
-        description,
-        week_number,
-        priority,
-        status,
-        resource_url,
-    } = req.body;
-
-    if (!roadmap_id || !title) {
-        sendError(res, 400, "roadmap_id and title are required");
-        return;
-    }
-
-    // Make sure the roadmap belongs to this user.
-    const { data: roadmap, error: roadmapError } = await supabase
-        .from("roadmaps")
-        .select("id")
-        .eq("id", roadmap_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-
-    if (roadmapError) {
-        req.log.error(
-            { errorCode: roadmapError.code },
-            "Could not verify roadmap",
-        );
-        sendError(res, 500, "Could not verify roadmap");
-        return;
-    }
-
-    if (!roadmap) {
-        sendError(res, 404, "Roadmap not found");
-        return;
-    }
-
-    const { data, error } = await supabase
-        .from("roadmap_tasks")
-        .insert({
+// Create a roadmap task
+router.post("/roadmap-tasks", async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const {
             roadmap_id,
             title,
-            description: description ?? null,
-            week_number: week_number ?? null,
-            priority: priority ?? null,
-            status: status ?? "not_started",
-            resource_url: resource_url ?? null,
-        })
-        .select("*")
-        .single();
+            description,
+            week_number,
+            priority,
+            status,
+            resource_url,
+        } = req.body;
 
-    if (error) {
-        req.log.error(
-            { errorCode: error.code },
-            "Could not create roadmap task",
-        );
-        sendError(res, 500, "Could not create roadmap task");
-        return;
+        if (!userId || !roadmap_id || !title?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Roadmap ID and task title are required",
+            });
+        }
+
+        const { data: roadmap, error: roadmapError } = await supabase
+            .from("roadmaps")
+            .select("id")
+            .eq("id", roadmap_id)
+            .eq("user_id", userId)
+            .maybeSingle();
+
+        if (roadmapError) throw roadmapError;
+
+        if (!roadmap) {
+            return res.status(404).json({
+                success: false,
+                message: "Roadmap not found",
+            });
+        }
+
+        const { data, error } = await supabase
+            .from("roadmap_tasks")
+            .insert({
+                roadmap_id,
+                title: title.trim(),
+                description: description ?? null,
+                week_number: week_number ?? null,
+                priority: priority ?? "Medium",
+                status: status ?? "Pending",
+                resource_url: resource_url ?? null,
+            })
+            .select("*")
+            .single();
+
+        if (error) throw error;
+
+        return res.status(201).json({ success: true, task: data });
+    } catch (error) {
+        req.log?.error({ error }, "Could not create roadmap task");
+        return res.status(500).json({
+            success: false,
+            message: "Could not create roadmap task",
+        });
     }
-
-    res.status(201).json({
-        success: true,
-        task: data,
-    });
 });
 
-// READ roadmap tasks
-router.get("/roadmap-tasks", requireAuth, async (req, res) => {
-    const userId = getUserId(req, res);
-    if (!userId) return;
+// Read tasks for the logged-in user's roadmaps
+router.get("/roadmap-tasks", async (req, res) => {
+    try {
+        const userId = req.user?.id;
 
-    const { roadmap_id } = req.query;
+        const { data, error } = await supabase
+            .from("roadmap_tasks")
+            .select("*, roadmaps!inner(user_id)")
+            .eq("roadmaps.user_id", userId)
+            .order("created_at", { ascending: false });
 
-    let query = supabase
-        .from("roadmap_tasks")
-        .select(`
-      *,
-      roadmaps!inner(user_id)
-    `)
-        .eq("roadmaps.user_id", userId);
+        if (error) throw error;
 
-    if (typeof roadmap_id === "string" && roadmap_id) {
-        query = query.eq("roadmap_id", roadmap_id);
+        return res.json({ success: true, tasks: data });
+    } catch (error) {
+        req.log?.error({ error }, "Could not fetch roadmap tasks");
+        return res.status(500).json({
+            success: false,
+            message: "Could not fetch roadmap tasks",
+        });
     }
-
-    const { data, error } = await query.order("week_number", {
-        ascending: true,
-    });
-
-    if (error) {
-        req.log.error(
-            { errorCode: error.code },
-            "Could not get roadmap tasks",
-        );
-        sendError(res, 500, "Could not get roadmap tasks");
-        return;
-    }
-
-    res.json({
-        success: true,
-        tasks: data,
-    });
 });
 
-// READ one roadmap task
-router.get("/roadmap-tasks/:id", requireAuth, async (req, res) => {
-    const userId = getUserId(req, res);
-    if (!userId) return;
+// Update a roadmap task
+router.put("/roadmap-tasks/:id", async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const taskId = req.params.id;
 
-    const { id } = req.params;
+        const { data: existing, error: findError } = await supabase
+            .from("roadmap_tasks")
+            .select("id, roadmap_id, roadmaps!inner(user_id)")
+            .eq("id", taskId)
+            .eq("roadmaps.user_id", userId)
+            .maybeSingle();
 
-    const { data, error } = await supabase
-        .from("roadmap_tasks")
-        .select(`
-      *,
-      roadmaps!inner(user_id)
-    `)
-        .eq("id", id)
-        .eq("roadmaps.user_id", userId)
-        .maybeSingle();
+        if (findError) throw findError;
 
-    if (error) {
-        req.log.error(
-            { errorCode: error.code },
-            "Could not get roadmap task",
-        );
-        sendError(res, 500, "Could not get roadmap task");
-        return;
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Roadmap task not found",
+            });
+        }
+
+        const allowedFields = [
+            "title",
+            "description",
+            "week_number",
+            "priority",
+            "status",
+            "resource_url",
+        ];
+
+        const updates: Record<string, unknown> = {};
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+            }
+        }
+
+        if (
+            typeof updates.title === "string" &&
+            !updates.title.trim()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Task title cannot be empty",
+            });
+        }
+
+        if (typeof updates.title === "string") {
+            updates.title = updates.title.trim();
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Provide at least one field to update",
+            });
+        }
+
+        updates.updated_at = new Date().toISOString();
+
+        const { data, error } = await supabase
+            .from("roadmap_tasks")
+            .update(updates)
+            .eq("id", taskId)
+            .select("*")
+            .single();
+
+        if (error) throw error;
+
+        return res.json({ success: true, task: data });
+    } catch (error) {
+        req.log?.error({ error }, "Could not update roadmap task");
+        return res.status(500).json({
+            success: false,
+            message: "Could not update roadmap task",
+        });
     }
-
-    if (!data) {
-        sendError(res, 404, "Roadmap task not found");
-        return;
-    }
-
-    res.json({
-        success: true,
-        task: data,
-    });
 });
 
-// UPDATE roadmap task
-router.put("/roadmap-tasks/:id", requireAuth, async (req, res) => {
-    const userId = getUserId(req, res);
-    if (!userId) return;
+// Delete a roadmap task
+router.delete("/roadmap-tasks/:id", async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const taskId = req.params.id;
 
-    const { id } = req.params;
+        const { data: existing, error: findError } = await supabase
+            .from("roadmap_tasks")
+            .select("id, roadmaps!inner(user_id)")
+            .eq("id", taskId)
+            .eq("roadmaps.user_id", userId)
+            .maybeSingle();
 
-    const {
-        title,
-        description,
-        week_number,
-        priority,
-        status,
-        resource_url,
-    } = req.body;
+        if (findError) throw findError;
 
-    // Make sure the task belongs to a roadmap owned by this user.
-    const { data: existingTask, error: existingTaskError } = await supabase
-        .from("roadmap_tasks")
-        .select(`
-      id,
-      roadmaps!inner(user_id)
-    `)
-        .eq("id", id)
-        .eq("roadmaps.user_id", userId)
-        .maybeSingle();
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Roadmap task not found",
+            });
+        }
 
-    if (existingTaskError) {
-        req.log.error(
-            { errorCode: existingTaskError.code },
-            "Could not verify roadmap task",
-        );
-        sendError(res, 500, "Could not verify roadmap task");
-        return;
+        const { error } = await supabase
+            .from("roadmap_tasks")
+            .delete()
+            .eq("id", taskId);
+
+        if (error) throw error;
+
+        return res.json({
+            success: true,
+            message: "Roadmap task deleted successfully",
+        });
+    } catch (error) {
+        req.log?.error({ error }, "Could not delete roadmap task");
+        return res.status(500).json({
+            success: false,
+            message: "Could not delete roadmap task",
+        });
     }
-
-    if (!existingTask) {
-        sendError(res, 404, "Roadmap task not found");
-        return;
-    }
-
-    const { data, error } = await supabase
-        .from("roadmap_tasks")
-        .update({
-            ...(title !== undefined && { title }),
-            ...(description !== undefined && { description }),
-            ...(week_number !== undefined && { week_number }),
-            ...(priority !== undefined && { priority }),
-            ...(status !== undefined && { status }),
-            ...(resource_url !== undefined && { resource_url }),
-            updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select("*")
-        .single();
-
-    if (error) {
-        req.log.error(
-            { errorCode: error.code },
-            "Could not update roadmap task",
-        );
-        sendError(res, 500, "Could not update roadmap task");
-        return;
-    }
-
-    res.json({
-        success: true,
-        task: data,
-    });
-});
-
-// DELETE roadmap task
-router.delete("/roadmap-tasks/:id", requireAuth, async (req, res) => {
-    const userId = getUserId(req, res);
-    if (!userId) return;
-
-    const { id } = req.params;
-
-    // Make sure the task belongs to a roadmap owned by this user.
-    const { data: existingTask, error: existingTaskError } = await supabase
-        .from("roadmap_tasks")
-        .select(`
-      id,
-      roadmaps!inner(user_id)
-    `)
-        .eq("id", id)
-        .eq("roadmaps.user_id", userId)
-        .maybeSingle();
-
-    if (existingTaskError) {
-        req.log.error(
-            { errorCode: existingTaskError.code },
-            "Could not verify roadmap task",
-        );
-        sendError(res, 500, "Could not verify roadmap task");
-        return;
-    }
-
-    if (!existingTask) {
-        sendError(res, 404, "Roadmap task not found");
-        return;
-    }
-
-    const { data, error } = await supabase
-        .from("roadmap_tasks")
-        .delete()
-        .eq("id", id)
-        .select("id")
-        .maybeSingle();
-
-    if (error) {
-        req.log.error(
-            { errorCode: error.code },
-            "Could not delete roadmap task",
-        );
-        sendError(res, 500, "Could not delete roadmap task");
-        return;
-    }
-
-    if (!data) {
-        sendError(res, 404, "Roadmap task not found");
-        return;
-    }
-
-    res.json({
-        success: true,
-        message: "Roadmap task deleted successfully",
-    });
 });
 
 export default router;

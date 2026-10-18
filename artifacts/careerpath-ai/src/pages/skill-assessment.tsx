@@ -357,14 +357,24 @@ export default function SkillAssessmentPage() {
             {(analysis.analysis ||
               analysis.result ||
               analysis.content) && (
-              <div className="mt-5 rounded-xl border bg-background p-5">
-                <p className="whitespace-pre-wrap text-sm leading-7">
-                  {analysis.analysis ||
-                    analysis.result ||
-                    analysis.content}
-                </p>
-              </div>
-            )}
+                <div className="mt-5 rounded-xl border bg-background p-5">
+                  <p className="whitespace-pre-wrap text-sm leading-7">
+                    {typeof (analysis.analysis ||
+                      analysis.result ||
+                      analysis.content) === "string"
+                      ? (analysis.analysis ||
+                        analysis.result ||
+                        analysis.content)
+                      : JSON.stringify(
+                        analysis.analysis ||
+                        analysis.result ||
+                        analysis.content,
+                        null,
+                        2
+                      )}
+                  </p>
+                </div>
+              )}
           </section>
         )}
       </div>

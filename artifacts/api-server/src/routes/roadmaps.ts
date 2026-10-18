@@ -29,33 +29,18 @@ router.post("/roadmaps", requireAuth, async (req, res) => {
         title,
         description,
         duration_weeks,
-        ai_generated,
     } = req.body;
 
-    if (!career_goal_id || !title) {
-        sendError(res, 400, "career_goal_id and title are required");
+    if (!title || typeof title !== "string" || !title.trim()) {
+        sendError(res, 400, "A valid title is required");
         return;
     }
 
-    // Make sure the career goal belongs to this user.
-    const { data: careerGoal, error: careerGoalError } = await supabase
-        .from("career_goals")
-        .select("id")
-        .eq("id", career_goal_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-
-    if (careerGoalError) {
-        req.log.error(
-            { errorCode: careerGoalError.code },
-            "Could not verify career goal",
-        );
-        sendError(res, 500, "Could not verify career goal");
-        return;
-    }
-
-    if (!careerGoal) {
-        sendError(res, 404, "Career goal not found");
+    if (
+        duration_weeks !== undefined &&
+        (!Number.isInteger(duration_weeks) || duration_weeks < 1)
+    ) {
+        sendError(res, 400, "duration_weeks must be a positive integer");
         return;
     }
 
@@ -63,28 +48,32 @@ router.post("/roadmaps", requireAuth, async (req, res) => {
         .from("roadmaps")
         .insert({
             user_id: userId,
-            career_goal_id,
-            title,
+            career_goal_id: career_goal_id ?? null,
+            title: title.trim(),
             description: description ?? null,
             duration_weeks: duration_weeks ?? null,
-            ai_generated: ai_generated ?? false,
         })
         .select("*")
         .single();
 
     if (error) {
-        req.log.error({ errorCode: error.code }, "Could not create roadmap");
+        req.log.error(
+            {
+                errorCode: error.code,
+                errorMessage: error.message,
+                details: error.details,
+                hint: error.hint,
+            },
+            "Could not create roadmap"
+        );
         sendError(res, 500, "Could not create roadmap");
         return;
     }
 
-    res.status(201).json({
-        success: true,
-        roadmap: data,
-    });
+    res.status(201).json({ success: true, roadmap: data });
 });
 
-// READ roadmaps
+// READ all roadmaps for the logged-in user
 router.get("/roadmaps", requireAuth, async (req, res) => {
     const userId = getUserId(req, res);
     if (!userId) return;
@@ -101,66 +90,48 @@ router.get("/roadmaps", requireAuth, async (req, res) => {
         return;
     }
 
-    res.json({
-        success: true,
-        roadmaps: data,
-    });
+    res.json({ success: true, roadmaps: data });
 });
 
-// READ one roadmap
-router.get("/roadmaps/:id", requireAuth, async (req, res) => {
-    const userId = getUserId(req, res);
-    if (!userId) return;
-
-    const { id } = req.params;
-
-    const { data, error } = await supabase
-        .from("roadmaps")
-        .select("*")
-        .eq("id", id)
-        .eq("user_id", userId)
-        .maybeSingle();
-
-    if (error) {
-        req.log.error({ errorCode: error.code }, "Could not get roadmap");
-        sendError(res, 500, "Could not get roadmap");
-        return;
-    }
-
-    if (!data) {
-        sendError(res, 404, "Roadmap not found");
-        return;
-    }
-
-    res.json({
-        success: true,
-        roadmap: data,
-    });
-});
-
-// UPDATE roadmap
+// UPDATE a roadmap owned by the logged-in user
 router.put("/roadmaps/:id", requireAuth, async (req, res) => {
     const userId = getUserId(req, res);
     if (!userId) return;
 
     const { id } = req.params;
-
     const {
+        career_goal_id,
         title,
         description,
         duration_weeks,
-        ai_generated,
     } = req.body;
+
+    if (title !== undefined &&
+        (typeof title !== "string" || !title.trim())) {
+        sendError(res, 400, "Title must be a non-empty string");
+        return;
+    }
+
+    if (
+        duration_weeks !== undefined &&
+        (!Number.isInteger(duration_weeks) || duration_weeks < 1)
+    ) {
+        sendError(res, 400, "duration_weeks must be a positive integer");
+        return;
+    }
+
+    const updates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+    };
+
+    if (career_goal_id !== undefined) updates.career_goal_id = career_goal_id;
+    if (title !== undefined) updates.title = title.trim();
+    if (description !== undefined) updates.description = description;
+    if (duration_weeks !== undefined) updates.duration_weeks = duration_weeks;
 
     const { data, error } = await supabase
         .from("roadmaps")
-        .update({
-            ...(title !== undefined && { title }),
-            ...(description !== undefined && { description }),
-            ...(duration_weeks !== undefined && { duration_weeks }),
-            ...(ai_generated !== undefined && { ai_generated }),
-            updated_at: new Date().toISOString(),
-        })
+        .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
         .select("*")
@@ -177,13 +148,10 @@ router.put("/roadmaps/:id", requireAuth, async (req, res) => {
         return;
     }
 
-    res.json({
-        success: true,
-        roadmap: data,
-    });
+    res.json({ success: true, roadmap: data });
 });
 
-// DELETE roadmap
+// DELETE a roadmap owned by the logged-in user
 router.delete("/roadmaps/:id", requireAuth, async (req, res) => {
     const userId = getUserId(req, res);
     if (!userId) return;
