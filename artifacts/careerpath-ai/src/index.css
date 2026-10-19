@@ -1417,12 +1417,9 @@ a {
     pointer-events: none;
   }
 
-  /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
+  /* .no-default-hover-elevate and .no-default-active-elevate are escape hatches so consumers of
    * buttons/badges can remove the automatic brightness adjustment on interactions
-   * and program their own. */
-  .no-default-hover-elevate {}
-
-  .no-default-active-elevate {}
+   * and program their own via :not(.no-default-hover-elevate) / :not(.no-default-active-elevate). */
 
   /**
    * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
@@ -1714,6 +1711,44 @@ html.dark .button-primary:hover {
 
 html.dark hr {
   border-color: hsl(var(--border));
+}
+
+/* =====================================
+   CAREERPATH AI — APP LAYOUT & SIDEBAR
+   ===================================== */
+
+.app-layout-shell {
+  min-height: 100vh;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.sidebar-shell {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border-right: 1px solid hsl(var(--border));
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+}
+
+.dashboard-metric-card {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.dashboard-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 6%);
+}
+
+html.dark .dashboard-metric-card:hover {
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
 }
 
 /* =====================================

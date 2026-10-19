@@ -19,6 +19,8 @@ import {
   useRegisterUser,
 } from '@workspace/api-client-react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const queryClient = new QueryClient();
 
@@ -81,6 +83,7 @@ function Header() {
         </nav>
 
         <div className="nav-actions">
+          <ThemeToggle className="h-9 w-9 rounded-xl border border-border/60 hover:bg-muted" />
           {user ? (
             <>
               <Link
@@ -481,34 +484,45 @@ function SiteFrame({ children }: { children: ReactNode }) {
   return <div className="site-shell"><Header />{children}<Footer /></div>;
 }
 
+const appRoutes = [
+  '/dashboard',
+  '/profile',
+  '/skills',
+  '/roadmap',
+  '/career-goal',
+  '/skill-assessment',
+];
+
 function Router() {
   const [location] = useLocation();
+  const isAppRoute = appRoutes.some(
+    (path) => location === path || location.startsWith(`${path}/`),
+  );
+
   return (
     <ErrorBoundary resetKey={location}>
-      <SiteFrame>
-        <Switch>
-          <Route path="/" component={Landing} />
-          <Route path="/login"><AuthPage mode="login" /></Route>
-          <Route path="/register"><AuthPage mode="register" /></Route>
-          <Route path="/profile" component={ProfilePage} />
-          <Route path="/dashboard" component={DashboardPage} />
-          <Route path="/skills" component={SkillsPage} />
-          <Route path="/roadmap" component={RoadmapPage} />
-          <Route path="/career-goal" component={CareerGoalPage} />
-          <Route
-            path="/skill-assessment"
-            component={SkillAssessmentPage}
-          />
-          {Object.entries(pageContent)
-            .filter(([path]) => path !== '/dashboard')
-            .map(([path, info]) => (
-              <Route key={path} path={path}>
-                <WorkspacePage info={info} />
-              </Route>
-            ))}
-          <Route component={NotFound} />
-        </Switch>
-      </SiteFrame>
+      {isAppRoute ? (
+        <AppLayout>
+          <Switch>
+            <Route path="/dashboard" component={DashboardPage} />
+            <Route path="/profile" component={ProfilePage} />
+            <Route path="/skills" component={SkillsPage} />
+            <Route path="/roadmap" component={RoadmapPage} />
+            <Route path="/career-goal" component={CareerGoalPage} />
+            <Route path="/skill-assessment" component={SkillAssessmentPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </AppLayout>
+      ) : (
+        <SiteFrame>
+          <Switch>
+            <Route path="/" component={Landing} />
+            <Route path="/login"><AuthPage mode="login" /></Route>
+            <Route path="/register"><AuthPage mode="register" /></Route>
+            <Route component={NotFound} />
+          </Switch>
+        </SiteFrame>
+      )}
     </ErrorBoundary>
   );
 }
