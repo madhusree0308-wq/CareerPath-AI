@@ -14,6 +14,9 @@ import {
   ArrowRight,
   Lock,
   Layers,
+  Loader2,
+  Info,
+  Clock,
 } from 'lucide-react';
 import {
   useGetStudentProfile,
@@ -24,6 +27,9 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface ProfileFormData {
   education_level: string;
@@ -97,7 +103,7 @@ export default function ProfilePage() {
     }
   }, [existingProfile]);
 
-  // Dismiss banners after 6 seconds
+  // Dismiss success message after 6 seconds
   useEffect(() => {
     if (!successMessage) return;
     const timer = setTimeout(() => setSuccessMessage(null), 6000);
@@ -122,11 +128,15 @@ export default function ProfilePage() {
     if (formData.graduation_year.trim()) {
       const parsedYear = Number(formData.graduation_year.trim());
       if (Number.isNaN(parsedYear) || !Number.isInteger(parsedYear)) {
-        setErrorMessage('Graduation year must be a valid whole number (e.g. 2027).');
+        setErrorMessage(
+          'Graduation year must be a valid whole number (e.g. 2027).',
+        );
         return;
       }
       if (parsedYear < 1950 || parsedYear > 2060) {
-        setErrorMessage('Please enter a realistic graduation year between 1950 and 2060.');
+        setErrorMessage(
+          'Please enter a realistic graduation year between 1950 and 2060.',
+        );
         return;
       }
       gradYearNumber = parsedYear;
@@ -200,175 +210,183 @@ export default function ProfilePage() {
   };
 
   const isSubmitting =
-    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending;
 
-  // Unauthenticated view
+  const getInitials = (name?: string) => {
+    if (!name) return 'ST';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  // 1. Unauthenticated View
   if (!authLoading && !user) {
     return (
-      <main className="inner-page">
-        <div className="page-head">
-          <div>
-            <div className="eyebrow">Step one · your story</div>
-            <h1>Student Profile</h1>
-            <p>Sign in to your account to manage your education, interests, and background.</p>
-          </div>
-          <span className="page-number">CAREERPATH / 02</span>
+      <main className="profile-page-container max-w-2xl mx-auto py-12 text-center space-y-6">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+          <UserRound className="w-8 h-8" />
         </div>
-
-        <section className="placeholder-panel">
-          <span className="panel-label">Authentication required</span>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginTop: 12 }}>
-            <span className="brand-mark" style={{ flexShrink: 0, borderRadius: 9 }}>
-              <UserRound aria-hidden="true" />
-            </span>
-            <div>
-              <h2 className="panel-title">Sign in to view your profile</h2>
-              <p className="panel-copy">
-                Your student profile helps CareerPath AI recommend tailored skill paths and career
-                trajectories based on what you study and what you love.
-              </p>
-            </div>
-          </div>
-          <div className="route-footer" style={{ marginTop: 24 }}>
-            <span>Already have an account? Sign in or register to get started.</span>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <Link href="/login" className="button button-outline" data-testid="button-profile-login">
-                Log in
-              </Link>
-              <Link href="/register" className="button button-primary" data-testid="button-profile-register">
-                Create account <ArrowRight aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  // Loading state
-  if (authLoading || (user && profileLoading)) {
-    return (
-      <main className="inner-page">
-        <div className="page-head">
-          <div>
-            <div className="eyebrow">Step one · your story</div>
-            <h1>Student Profile</h1>
-            <p>Loading your profile details...</p>
-          </div>
-          <span className="page-number">CAREERPATH / 02</span>
-        </div>
-        <div className="status loading" role="status" style={{ padding: '12px 18px' }}>
-          <i /> Loading student profile
-        </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="inner-page">
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">Step one · your story</div>
-          <h1>Start with what makes you, you.</h1>
-          <p>
-            A few details put your studies, experience, and interests in context for AI-driven guidance.
+        <div className="space-y-2">
+          <Badge variant="outline" className="text-xs uppercase tracking-wider">
+            Authentication Required
+          </Badge>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+            Sign In to Manage Profile
+          </h1>
+          <p className="text-muted-foreground text-sm sm:text-base max-w-md mx-auto">
+            Your student profile helps CareerPath AI recommend tailored skill
+            paths and career trajectories based on your studies and interests.
           </p>
         </div>
-        <span className="page-number">CAREERPATH / 02</span>
-      </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Link
+            href="/login"
+            className="button button-outline px-6 py-2.5"
+            data-testid="button-profile-login"
+          >
+            Log in
+          </Link>
+          <Link
+            href="/register"
+            className="button button-primary px-6 py-2.5"
+            data-testid="button-profile-register"
+          >
+            Create account <ArrowRight className="w-4 h-4 ml-1" />
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
-      {/* Profile status pill */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        {isExisting ? (
-          <span className="status" role="status" data-testid="status-profile-exists">
-            <i /> Profile active · {existingProfile?.institution || 'Student'}
-          </span>
-        ) : (
-          <span className="status offline" role="status" data-testid="status-profile-empty">
-            <i /> No profile saved yet · complete the form below
-          </span>
-        )}
+  // 2. Loading State
+  if (authLoading || (user && profileLoading)) {
+    return (
+      <main className="profile-page-container space-y-6">
+        <div className="flex flex-col gap-2 animate-pulse">
+          <div className="h-4 w-32 bg-muted rounded-md" />
+          <div className="h-8 w-64 bg-muted rounded-md" />
+          <div className="h-4 w-96 bg-muted rounded-md" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 h-96 rounded-2xl bg-card border border-border animate-pulse p-6" />
+          <div className="lg:col-span-5 h-96 rounded-2xl bg-card border border-border animate-pulse p-6" />
+        </div>
+      </main>
+    );
+  }
 
-        {existingProfile?.updated_at && (
-          <span style={{ fontSize: 11, color: '#748078' }}>
-            Last updated: {new Date(existingProfile.updated_at).toLocaleDateString()}
-          </span>
-        )}
-      </div>
+  // Split interests into tags for preview
+  const interestTags = formData.interests
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 
-      {/* Notifications */}
+  return (
+    <main className="profile-page-container space-y-8">
+      {/* Page Header */}
+      <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-border/60">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold tracking-wider uppercase text-primary">
+              Student Story
+            </span>
+            <span className="text-muted-foreground/60">·</span>
+            <span className="text-xs text-muted-foreground">
+              Career Foundation
+            </span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Start with what makes you, you.
+          </h1>
+
+          <p className="text-sm sm:text-base text-muted-foreground mt-1 max-w-2xl">
+            A few details put your studies, experience, and interests in context
+            for AI-driven guidance and learning roadmaps.
+          </p>
+        </div>
+
+        {/* Status indicator badges */}
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+          {isExisting ? (
+            <span
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+              role="status"
+              data-testid="status-profile-exists"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Profile Active · {existingProfile?.institution || 'Student'}
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+              role="status"
+              data-testid="status-profile-empty"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              No profile saved yet
+            </span>
+          )}
+
+          {existingProfile?.updated_at && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              Updated:{' '}
+              {new Date(existingProfile.updated_at).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+      </section>
+
+      {/* Success Notification */}
       {successMessage && (
         <div
-          className="auth-notice"
+          className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 flex items-center gap-3"
           role="status"
-          style={{
-            background: '#e9efe5',
-            color: '#245c50',
-            borderColor: '#bcd0bc',
-            border: '1px solid #c7d8cb',
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-          }}
           data-testid="notice-profile-success"
         >
-          <CheckCircle2 style={{ width: 16, height: 16, flexShrink: 0, color: '#245c50' }} />
-          <span>{successMessage}</span>
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span className="text-sm font-medium">{successMessage}</span>
         </div>
       )}
 
+      {/* Error Notification */}
       {errorMessage && (
         <div
-          className="auth-notice"
+          className="p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-3"
           role="alert"
-          style={{
-            background: '#fcf0ed',
-            color: '#9e4431',
-            borderColor: '#f2c8be',
-            border: '1px solid #f2c8be',
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-          }}
           data-testid="notice-profile-error"
         >
-          <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, color: '#bd7448' }} />
-          <span>{errorMessage}</span>
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <span className="text-sm font-medium">{errorMessage}</span>
         </div>
       )}
 
-      {/* Delete Confirmation Modal / Banner */}
+      {/* Delete Confirmation Alert Banner */}
       {showDeleteConfirm && (
         <div
-          style={{
-            padding: 20,
-            background: '#fff9f6',
-            border: '1px solid #f0cfc5',
-            borderRadius: 12,
-            marginBottom: 24,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
+          className="p-5 rounded-2xl border border-destructive/40 bg-destructive/5 space-y-3"
           role="alertdialog"
           aria-labelledby="delete-confirm-title"
           data-testid="dialog-delete-confirm"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#9e4431', fontWeight: 700 }}>
-            <Trash2 style={{ width: 18, height: 18 }} />
-            <span id="delete-confirm-title">Are you sure you want to delete your profile?</span>
+          <div className="flex items-center gap-2 text-destructive font-bold text-sm sm:text-base">
+            <Trash2 className="w-5 h-5" />
+            <span id="delete-confirm-title">
+              Are you sure you want to delete your profile?
+            </span>
           </div>
-          <p style={{ margin: 0, fontSize: 13, color: '#6e7068', lineHeight: 1.5 }}>
-            This will permanently remove your educational background, interests, and bio. Your account
-            credentials will remain active.
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-xl">
+            This will permanently remove your educational background,
+            interests, and bio. Your account credentials and login will remain
+            active.
           </p>
-          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <div className="flex items-center gap-3 pt-1">
             <button
               type="button"
-              className="button button-primary"
-              style={{ background: '#b84432', borderColor: '#a33928', color: '#fff' }}
+              className="button button-primary bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs py-2 px-4"
               onClick={handleDelete}
               disabled={isSubmitting}
               data-testid="button-confirm-delete"
@@ -377,7 +395,7 @@ export default function ProfilePage() {
             </button>
             <button
               type="button"
-              className="button button-outline"
+              className="button button-outline text-xs py-2 px-4"
               onClick={() => setShowDeleteConfirm(false)}
               disabled={isSubmitting}
               data-testid="button-cancel-delete"
@@ -388,138 +406,155 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1.2fr)',
-          gap: 28,
-          alignItems: 'start',
-        }}
-      >
-        {/* Main Profile Form */}
-        <div className="auth-card" style={{ width: '100%', padding: '30px 32px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      {/* Main Dual-Column Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column (7/12): Main Profile Form Card */}
+        <div className="lg:col-span-7 rounded-2xl border border-border bg-card text-card-foreground p-6 sm:p-8 shadow-xs space-y-6">
+          <div className="flex items-center justify-between pb-4 border-b border-border/60">
             <div>
-              <span className="panel-label">
-                {isExisting ? 'Manage your information' : 'Create your student profile'}
+              <span className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground">
+                {isExisting
+                  ? 'Manage your information'
+                  : 'Create your student profile'}
               </span>
-              <h2 style={{ fontSize: 22, margin: '6px 0 0', color: '#21463e' }}>
+              <h2 className="text-xl font-bold text-foreground mt-0.5">
                 {isExisting ? 'Edit Profile' : 'New Profile'}
               </h2>
             </div>
             {existingProfile?.id && (
-              <span style={{ fontSize: 11, color: '#748078', fontWeight: 600 }}>
+              <span className="text-[11px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
                 ID: {existingProfile.id.slice(0, 8)}…
               </span>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} data-testid="form-student-profile">
-            {/* Read-Only Account Name Field (Requirement #8) */}
-            <div style={{ marginBottom: 18 }}>
-              <label className="field" htmlFor="field-name">
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>Full name</span>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontSize: 10,
-                      color: '#657e75',
-                      fontWeight: 500,
-                    }}
-                  >
-                    <Lock style={{ width: 10, height: 10 }} /> Read-only from account
-                  </span>
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6"
+            data-testid="form-student-profile"
+          >
+            {/* Section 1: Account Context (Read-Only) */}
+            <div className="space-y-1.5">
+              <label
+                className="flex items-center justify-between text-xs font-semibold text-foreground"
+                htmlFor="field-name"
+              >
+                <span>Full Name</span>
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-normal">
+                  <Lock className="w-3 h-3 text-muted-foreground" /> Read-only
+                  from account
                 </span>
-                <input
-                  id="field-name"
-                  type="text"
-                  value={user?.name ?? ''}
-                  disabled
-                  readOnly
-                  style={{
-                    background: '#f2f0e8',
-                    color: '#4f5e58',
-                    cursor: 'not-allowed',
-                    borderColor: '#ddd9cb',
-                  }}
-                  data-testid="input-profile-name"
-                />
               </label>
+              <input
+                id="field-name"
+                type="text"
+                value={user?.name ?? ''}
+                disabled
+                readOnly
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-muted/60 text-muted-foreground cursor-not-allowed select-none font-medium"
+                data-testid="input-profile-name"
+              />
             </div>
 
-            {/* Grid of Education Fields */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-              <label className="field" htmlFor="field-education-level">
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <GraduationCap style={{ width: 13, height: 13, color: '#255b50' }} />
+            {/* Section 2: Education Level & Institution */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label
+                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                  htmlFor="field-education-level"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 text-primary" />
                   Education Level
-                </span>
+                </label>
                 <input
                   id="field-education-level"
                   type="text"
-                  placeholder="e.g. Undergraduate, High School, Postgraduate"
+                  placeholder="e.g. Undergraduate, High School, M.S."
                   value={formData.education_level}
-                  onChange={(e) => handleInputChange('education_level', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange('education_level', e.target.value)
+                  }
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                   data-testid="input-profile-education-level"
                 />
-              </label>
+              </div>
 
-              <label className="field" htmlFor="field-institution">
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Building2 style={{ width: 13, height: 13, color: '#255b50' }} />
+              <div className="space-y-1.5">
+                <label
+                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                  htmlFor="field-institution"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
                   Institution / College
-                </span>
+                </label>
                 <input
                   id="field-institution"
                   type="text"
-                  placeholder="e.g. ABC University, Stanford, IIT"
+                  placeholder="e.g. Stanford University, ABC College"
                   value={formData.institution}
-                  onChange={(e) => handleInputChange('institution', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange('institution', e.target.value)
+                  }
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                   data-testid="input-profile-institution"
                 />
-              </label>
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-              <label className="field" htmlFor="field-degree">
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <BookOpen style={{ width: 13, height: 13, color: '#255b50' }} />
+            {/* Section 3: Degree & Branch */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label
+                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                  htmlFor="field-degree"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-primary" />
                   Degree
-                </span>
+                </label>
                 <input
                   id="field-degree"
                   type="text"
                   placeholder="e.g. B.Tech, B.S., M.S., Diploma"
                   value={formData.degree}
-                  onChange={(e) => handleInputChange('degree', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange('degree', e.target.value)
+                  }
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                   data-testid="input-profile-degree"
                 />
-              </label>
+              </div>
 
-              <label className="field" htmlFor="field-branch">
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Layers style={{ width: 13, height: 13, color: '#255b50' }} />
+              <div className="space-y-1.5">
+                <label
+                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                  htmlFor="field-branch"
+                >
+                  <Layers className="w-3.5 h-3.5 text-primary" />
                   Branch / Major
-                </span>
+                </label>
                 <input
                   id="field-branch"
                   type="text"
                   placeholder="e.g. Computer Science, Mechanical"
                   value={formData.branch}
-                  onChange={(e) => handleInputChange('branch', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange('branch', e.target.value)
+                  }
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                   data-testid="input-profile-branch"
                 />
-              </label>
+              </div>
             </div>
 
-            <label className="field" htmlFor="field-graduation-year">
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Calendar style={{ width: 13, height: 13, color: '#255b50' }} />
+            {/* Section 4: Graduation Year */}
+            <div className="space-y-1.5">
+              <label
+                className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                htmlFor="field-graduation-year"
+              >
+                <Calendar className="w-3.5 h-3.5 text-primary" />
                 Graduation Year
-              </span>
+              </label>
               <input
                 id="field-graduation-year"
                 type="number"
@@ -527,177 +562,164 @@ export default function ProfilePage() {
                 min="1950"
                 max="2060"
                 value={formData.graduation_year}
-                onChange={(e) => handleInputChange('graduation_year', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange('graduation_year', e.target.value)
+                }
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 data-testid="input-profile-graduation-year"
               />
-            </label>
+            </div>
 
-            <label className="field" htmlFor="field-interests">
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles style={{ width: 13, height: 13, color: '#bd7448' }} />
-                Interests & Fields of Curiosity
-              </span>
+            {/* Section 5: Interests & Curiosities */}
+            <div className="space-y-1.5">
+              <label
+                className="flex items-center justify-between text-xs font-semibold text-foreground"
+                htmlFor="field-interests"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-accent" />
+                  Interests & Fields of Curiosity
+                </span>
+                <span className="text-[11px] text-muted-foreground font-normal">
+                  Comma-separated
+                </span>
+              </label>
               <input
                 id="field-interests"
                 type="text"
                 placeholder="e.g. Artificial Intelligence, Web Development, Robotics, FinTech"
                 value={formData.interests}
-                onChange={(e) => handleInputChange('interests', e.target.value)}
+                onChange={(e) =>
+                  handleInputChange('interests', e.target.value)
+                }
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 data-testid="input-profile-interests"
               />
-            </label>
+            </div>
 
-            <label className="field" htmlFor="field-bio">
-              <span>Bio & Aspirations</span>
+            {/* Section 6: Bio & Aspirations */}
+            <div className="space-y-1.5">
+              <label
+                className="flex items-center justify-between text-xs font-semibold text-foreground"
+                htmlFor="field-bio"
+              >
+                <span>Bio & Aspirations</span>
+                <span className="text-[11px] text-muted-foreground font-normal">
+                  Short summary
+                </span>
+              </label>
               <textarea
                 id="field-bio"
-                rows={3}
-                placeholder="Tell us a little about your journey, interests, or what you want to achieve."
+                rows={4}
+                placeholder="Tell us a little about your journey, interests, or what you hope to achieve in your career..."
                 value={formData.bio}
                 onChange={(e) => handleInputChange('bio', e.target.value)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  marginTop: 7,
-                  padding: '10px 12px',
-                  border: '1px solid #dcded3',
-                  borderRadius: 7,
-                  background: '#fffdf7',
-                  color: '#294b42',
-                  font: '500 13px var(--app-font-sans)',
-                  outline: 'none',
-                  resize: 'vertical',
-                }}
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
                 data-testid="input-profile-bio"
               />
-            </label>
+            </div>
 
-            {/* Buttons Bar */}
-            <div
-              style={{
-                display: 'flex',
-                gap: 12,
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: 22,
-                paddingTop: 16,
-                borderTop: '1px solid #e9e5d9',
-                flexWrap: 'wrap',
-              }}
-            >
+            {/* Action Buttons Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-border/60">
               <button
                 type="submit"
-                className="button button-primary"
+                className="button button-primary min-w-[150px] flex items-center justify-center gap-2 text-sm py-2.5 px-5"
                 disabled={isSubmitting}
                 data-testid="button-save-profile"
-                style={{ minWidth: 150 }}
               >
-                <Save style={{ width: 14, height: 14 }} />
-                {isSubmitting
-                  ? 'Saving...'
-                  : isExisting
-                    ? 'Save changes'
-                    : 'Create profile'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>
+                      {isExisting ? 'Save changes' : 'Create profile'}
+                    </span>
+                  </>
+                )}
               </button>
 
               {isExisting && (
                 <button
                   type="button"
-                  className="button button-outline"
-                  style={{
-                    borderColor: '#e8c4be',
-                    color: '#9e4431',
-                  }}
+                  className="button button-outline text-destructive hover:bg-destructive/10 border-destructive/30 flex items-center gap-1.5 text-sm py-2.5 px-4"
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isSubmitting}
                   data-testid="button-delete-profile"
                 >
-                  <Trash2 style={{ width: 14, height: 14 }} />
-                  Delete profile
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete profile</span>
                 </button>
               )}
             </div>
           </form>
         </div>
 
-        {/* Live Preview Card */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div className="placeholder-panel" style={{ padding: 24 }}>
-            <span className="panel-label">Live Preview</span>
-            <h3 style={{ margin: '8px 0 16px', color: '#23473e', fontSize: 18 }}>
-              Student Snapshot
-            </h3>
+        {/* Right Column (5/12): Live Snapshot & AI Context */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Live Preview Snapshot Card */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <span className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground">
+                Live Preview
+              </span>
+              <Badge variant="secondary" className="text-[10px]">
+                Student Snapshot
+              </Badge>
+            </div>
 
-            <div
-              style={{
-                padding: 16,
-                background: '#fffdf9',
-                border: '1px solid #e5dfd0',
-                borderRadius: 10,
-                boxShadow: '0 4px 12px #283d3108',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: '50%',
-                    background: '#245c50',
-                    color: '#f9f4e7',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontWeight: 700,
-                    fontSize: 16,
-                  }}
-                >
-                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'ST'}
-                </div>
-                <div>
-                  <strong style={{ display: 'block', color: '#193d36', fontSize: 15 }}>
+            <div className="p-4 rounded-xl border border-border/70 bg-background/60 space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-11 w-11 border border-border">
+                  <AvatarFallback className="bg-primary/15 text-primary font-bold text-sm">
+                    {getInitials(user?.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <strong className="block text-sm font-bold text-foreground truncate">
                     {user?.name || 'Student Name'}
                   </strong>
-                  <small style={{ color: '#748078', fontSize: 11 }}>
+                  <span className="text-xs text-muted-foreground truncate block">
                     {user?.email || 'student@example.com'}
-                  </small>
+                  </span>
                 </div>
               </div>
 
-              <div style={{ fontSize: 12, color: '#4f5e58', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className="space-y-3 pt-2 border-t border-border/40 text-xs">
                 <div>
-                  <span style={{ color: '#88938b', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
                     Education
                   </span>
-                  <div style={{ fontWeight: 600, color: '#21463e' }}>
+                  <div className="font-semibold text-foreground">
                     {formData.degree || formData.education_level
-                      ? `${formData.degree || ''} ${formData.branch ? `in ${formData.branch}` : ''}`
+                      ? `${formData.degree || ''} ${
+                          formData.branch ? `in ${formData.branch}` : ''
+                        }`
                       : 'Degree / Branch not specified'}
                   </div>
-                  <div style={{ color: '#68776f' }}>
+                  <div className="text-muted-foreground mt-0.5">
                     {formData.institution || 'Institution not specified'}
-                    {formData.graduation_year ? ` · Class of ${formData.graduation_year}` : ''}
+                    {formData.graduation_year
+                      ? ` · Class of ${formData.graduation_year}`
+                      : ''}
                   </div>
                 </div>
 
-                {formData.interests && (
-                  <div style={{ marginTop: 8 }}>
-                    <span style={{ color: '#88938b', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
+                {interestTags.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
                       Interests
                     </span>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 4 }}>
-                      {formData.interests.split(',').map((item, idx) => (
+                    <div className="flex flex-wrap gap-1.5">
+                      {interestTags.map((tag, idx) => (
                         <span
                           key={idx}
-                          style={{
-                            padding: '3px 7px',
-                            background: '#eff4eb',
-                            color: '#28584c',
-                            borderRadius: 12,
-                            fontSize: 10,
-                            fontWeight: 600,
-                          }}
+                          className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-primary border border-primary/20"
                         >
-                          {item.trim()}
+                          {tag}
                         </span>
                       ))}
                     </div>
@@ -705,11 +727,11 @@ export default function ProfilePage() {
                 )}
 
                 {formData.bio && (
-                  <div style={{ marginTop: 8 }}>
-                    <span style={{ color: '#88938b', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
-                      About
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                      Bio & Aspirations
                     </span>
-                    <p style={{ margin: '4px 0 0', fontStyle: 'italic', color: '#5f6f66', lineHeight: 1.5 }}>
+                    <p className="text-xs text-muted-foreground italic leading-relaxed border-l-2 border-primary/40 pl-2.5 my-1">
                       "{formData.bio}"
                     </p>
                   </div>
@@ -717,8 +739,60 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div style={{ marginTop: 18, fontSize: 11, color: '#889188' }}>
-              Your profile is private to your account and powers your upcoming career roadmaps and skills assessment.
+            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>
+                Your profile is private and directly contextualizes AI roadmaps
+                and skill gap analyses.
+              </span>
+            </div>
+          </div>
+
+          {/* AI Career Alignment Info Card */}
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                <Sparkles className="w-4 h-4" />
+              </span>
+              <h3 className="text-sm font-bold text-foreground">
+                How CareerPath AI uses your profile
+              </h3>
+            </div>
+            <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="text-primary font-bold">•</span>
+                <span>
+                  <strong className="text-foreground">Degree & Major:</strong>{' '}
+                  Identifies foundation skills to avoid redundant beginner
+                  steps.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary font-bold">•</span>
+                <span>
+                  <strong className="text-foreground">Graduation Year:</strong>{' '}
+                  Calibrates the pacing of weekly milestones for campus or
+                  placement deadlines.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary font-bold">•</span>
+                <span>
+                  <strong className="text-foreground">Interests:</strong>{' '}
+                  Recommends specialized electives and portfolio project ideas.
+                </span>
+              </li>
+            </ul>
+
+            <div className="pt-2 border-t border-primary/10 flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Ready for next steps?</span>
+              <Link
+                href="/skills"
+                className="text-primary font-semibold hover:underline flex items-center gap-1"
+              >
+                <span>Add Skills</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
           </div>
         </div>
