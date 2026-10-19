@@ -29,7 +29,7 @@ const destinations = [
   { href: '/career-goal', label: 'Career goal' },
   { href: '/skill-assessment', label: 'Skill Assessment' },
   { href: '/roadmap', label: 'Roadmap' },
-];function Brand() {
+]; function Brand() {
   return (
     <Link href="/" className="brand" aria-label="CareerPath AI home" data-testid="link-home-brand">
       <span className="brand-mark"><RouteIcon aria-hidden="true" /></span>
@@ -38,72 +38,111 @@ const destinations = [
   );
 }
 
+
 function Header() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAuth = location === '/login' || location === '/register';
+
+  const closeMenu = () => setIsMenuOpen(false);
 
   return (
     <header className="topbar">
       <Brand />
-      <nav className="nav-links" aria-label="Main navigation">
-        {destinations.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`nav-link ${location === item.href ? 'active' : ''}`}
-            data-testid={`link-${item.href.slice(1)}`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <div className="nav-actions">
-        {user ? (
-          <>
+
+      <button
+        type="button"
+        className="mobile-menu-toggle"
+        aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-expanded={isMenuOpen}
+        aria-controls="header-menu"
+        onClick={() => setIsMenuOpen((open) => !open)}
+      >
+        {isMenuOpen ? '✕' : '☰'}
+      </button>
+
+      <div
+        id="header-menu"
+        className={`header-menu ${isMenuOpen ? 'is-open' : ''}`}
+      >
+        <nav className="nav-links" aria-label="Main navigation">
+          {destinations.map((item) => (
             <Link
-              href="/profile"
-              className="button button-quiet"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              data-testid="link-user-profile"
+              key={item.href}
+              href={item.href}
+              className={`nav-link ${location === item.href ? 'active' : ''}`}
+              data-testid={`link-${item.href.slice(1)}`}
+              onClick={closeMenu}
             >
-              <UserRound style={{ width: 14, height: 14 }} />
-              <span>{user.name.split(' ')[0]}</span>
+              {item.label}
             </Link>
-            <button
-              type="button"
-              onClick={logout}
-              className="button button-outline"
-              data-testid="button-logout"
-            >
-              Log out
-            </button>
-          </>
-        ) : (
-          <>
-            <Link
-              href="/login"
-              className={`button button-quiet ${location === '/login' ? 'active' : ''}`}
-              data-testid="link-login"
-            >
-              Log in
-            </Link>
-            {!isAuth && (
-              <Link href="/register" className="button button-primary" data-testid="link-get-started">
-                Get started <ArrowRight aria-hidden="true" />
+          ))}
+        </nav>
+
+        <div className="nav-actions">
+          {user ? (
+            <>
+              <Link
+                href="/profile"
+                className="button button-quiet"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                data-testid="link-user-profile"
+                onClick={closeMenu}
+              >
+                <UserRound style={{ width: 14, height: 14 }} />
+                <span>{user.name.split(' ')[0]}</span>
               </Link>
-            )}
-            {isAuth && (
-              <Link href="/register" className="button button-primary" data-testid="link-register">
-                Create account <ArrowRight aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu();
+                  logout();
+                }}
+                className="button button-outline"
+                data-testid="button-logout"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className={`button button-quiet ${location === '/login' ? 'active' : ''}`}
+                data-testid="link-login"
+                onClick={closeMenu}
+              >
+                Log in
               </Link>
-            )}
-          </>
-        )}
+              {!isAuth && (
+                <Link
+                  href="/register"
+                  className="button button-primary"
+                  data-testid="link-get-started"
+                  onClick={closeMenu}
+                >
+                  Get started <ArrowRight aria-hidden="true" />
+                </Link>
+              )}
+              {isAuth && (
+                <Link
+                  href="/register"
+                  className="button button-primary"
+                  data-testid="link-register"
+                  onClick={closeMenu}
+                >
+                  Create account <ArrowRight aria-hidden="true" />
+                </Link>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
 }
+
 
 function ApiStatus() {
   const { data, isLoading, isError, refetch } = useGetCareerPathHealth({
@@ -453,20 +492,20 @@ function Router() {
           <Route path="/register"><AuthPage mode="register" /></Route>
           <Route path="/profile" component={ProfilePage} />
           <Route path="/dashboard" component={DashboardPage} />
-	  <Route path="/skills" component={SkillsPage} />
+          <Route path="/skills" component={SkillsPage} />
           <Route path="/roadmap" component={RoadmapPage} />
-	  <Route path="/career-goal" component={CareerGoalPage} />
-	  <Route
-  		path="/skill-assessment"
-  		component={SkillAssessmentPage}
-	  />
-{Object.entries(pageContent)
-  .filter(([path]) => path !== '/dashboard')
-  .map(([path, info]) => (
-    <Route key={path} path={path}>
-      <WorkspacePage info={info} />
-    </Route>
-  ))}
+          <Route path="/career-goal" component={CareerGoalPage} />
+          <Route
+            path="/skill-assessment"
+            component={SkillAssessmentPage}
+          />
+          {Object.entries(pageContent)
+            .filter(([path]) => path !== '/dashboard')
+            .map(([path, info]) => (
+              <Route key={path} path={path}>
+                <WorkspacePage info={info} />
+              </Route>
+            ))}
           <Route component={NotFound} />
         </Switch>
       </SiteFrame>

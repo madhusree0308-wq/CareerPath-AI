@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { ThemeProvider } from '@/components/theme-provider';
 
 import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -12,8 +13,15 @@ createRoot(document.getElementById('root')!, {
   },
 }).render(
   <ErrorBoundary>
+  <ThemeProvider
+    attribute="class"
+    defaultTheme="light"
+    enableSystem={false}
+    storageKey="careerpath-ai-theme"
+  >
     <App />
-  </ErrorBoundary>,
+  </ThemeProvider>
+</ErrorBoundary>
 );
 
 
