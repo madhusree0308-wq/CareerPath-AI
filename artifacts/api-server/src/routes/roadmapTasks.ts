@@ -159,6 +159,7 @@ router.put("/roadmap-tasks/:id", async (req, res) => {
             .from("roadmap_tasks")
             .update(updates)
             .eq("id", taskId)
+            .eq("roadmap_id", existing.roadmap_id)
             .select("*")
             .single();
 
@@ -182,7 +183,7 @@ router.delete("/roadmap-tasks/:id", async (req, res) => {
 
         const { data: existing, error: findError } = await supabase
             .from("roadmap_tasks")
-            .select("id, roadmaps!inner(user_id)")
+            .select("id, roadmap_id, roadmaps!inner(user_id)")
             .eq("id", taskId)
             .eq("roadmaps.user_id", userId)
             .maybeSingle();
@@ -199,8 +200,8 @@ router.delete("/roadmap-tasks/:id", async (req, res) => {
         const { error } = await supabase
             .from("roadmap_tasks")
             .delete()
-            .eq("id", taskId);
-
+            .eq("id", taskId)
+            .eq("roadmap_id", existing.roadmap_id);
         if (error) throw error;
 
         return res.json({

@@ -52,6 +52,18 @@ async function generateWithGemini(prompt: string): Promise<string> {
         } catch (error) {
             lastError = error;
 
+            const message =
+                error instanceof Error ? error.message : String(error);
+
+            // Quota/rate-limit errors will not be fixed by an immediate retry.
+            if (
+                /\b429\b|RESOURCE_EXHAUSTED|quota exceeded|rate.?limit/i.test(
+                    message,
+                )
+            ) {
+                throw new Error("GEMINI_QUOTA_EXCEEDED");
+            }
+
             if (attempt < 3) {
                 await new Promise((resolve) =>
                     setTimeout(resolve, attempt * 2000),
@@ -239,11 +251,22 @@ Do not invent qualifications or skills that are not supported by the data.
     } catch (error) {
         req.log.error(
             {
-                errorMessage:
-                    error instanceof Error ? error.message : String(error),
+                errorType: error instanceof Error ? error.name : "UnknownError",
             },
             "Gemini career analysis failed",
         );
+
+        if (
+            error instanceof Error &&
+            error.message === "GEMINI_QUOTA_EXCEEDED"
+        ) {
+            sendError(
+                res,
+                429,
+                "Gemini AI usage limit reached. Please try again after your quota resets.",
+            );
+            return;
+        }
 
         sendError(res, 502, "Could not generate AI analysis. Please try again.");
     }
@@ -564,11 +587,22 @@ Requirements:
     } catch (error) {
         req.log.error(
             {
-                errorMessage:
-                    error instanceof Error ? error.message : String(error),
+                errorType: error instanceof Error ? error.name : "UnknownError",
             },
             "Gemini roadmap generation failed",
         );
+
+        if (
+            error instanceof Error &&
+            error.message === "GEMINI_QUOTA_EXCEEDED"
+        ) {
+            sendError(
+                res,
+                429,
+                "Gemini AI usage limit reached. Please try again after your quota resets.",
+            );
+            return;
+        }
 
         sendError(res, 502, "Could not generate roadmap. Please try again.");
     }
