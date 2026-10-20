@@ -17,6 +17,8 @@ import {
   Loader2,
   Info,
   Clock,
+  Shield,
+  BadgeCheck,
 } from 'lucide-react';
 import {
   useGetStudentProfile,
@@ -51,6 +53,82 @@ const emptyForm: ProfileFormData = {
   bio: '',
 };
 
+/* ─────────────────── Small reusable sub-components ─────────────────── */
+
+function FieldLabel({
+  htmlFor,
+  icon: Icon,
+  children,
+  hint,
+}: {
+  htmlFor: string;
+  icon?: React.ElementType;
+  children: React.ReactNode;
+  hint?: React.ReactNode;
+}) {
+  return (
+    <label
+      className="flex items-center justify-between text-xs font-semibold text-foreground mb-1.5"
+      htmlFor={htmlFor}
+    >
+      <span className="flex items-center gap-1.5">
+        {Icon && <Icon className="w-3.5 h-3.5 text-primary" aria-hidden="true" />}
+        {children}
+      </span>
+      {hint && (
+        <span className="text-[11px] text-muted-foreground font-normal">{hint}</span>
+      )}
+    </label>
+  );
+}
+
+function FormInput({
+  id,
+  type = 'text',
+  placeholder,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  min,
+  max,
+  'data-testid': testId,
+}: {
+  id: string;
+  type?: string;
+  placeholder?: string;
+  value: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  min?: string;
+  max?: string;
+  'data-testid'?: string;
+}) {
+  return (
+    <input
+      id={id}
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      readOnly={readOnly}
+      min={min}
+      max={max}
+      data-testid={testId}
+      className={`w-full px-3.5 py-2.5 text-sm rounded-xl border transition-all
+        ${
+          disabled
+            ? 'border-border bg-muted/60 text-muted-foreground cursor-not-allowed select-none'
+            : 'border-border bg-background text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 hover:border-primary/30'
+        }`}
+    />
+  );
+}
+
+/* ─────────────────── Main page component ─────────────────── */
+
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
@@ -60,7 +138,7 @@ export default function ProfilePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Fetch the authenticated user's profile
+  // ── Fetch authenticated user's profile ──────────────────────────────
   const {
     data: profileData,
     isLoading: profileLoading,
@@ -82,7 +160,7 @@ export default function ProfilePage() {
   const existingProfile = profileData?.profile ?? null;
   const isExisting = Boolean(existingProfile);
 
-  // Populate form data when profile is loaded
+  // ── Populate form when profile loads ───────────────────────────────
   useEffect(() => {
     if (existingProfile) {
       setFormData({
@@ -103,40 +181,33 @@ export default function ProfilePage() {
     }
   }, [existingProfile]);
 
-  // Dismiss success message after 6 seconds
+  // ── Auto-dismiss success banner after 6 s ──────────────────────────
   useEffect(() => {
     if (!successMessage) return;
     const timer = setTimeout(() => setSuccessMessage(null), 6000);
     return () => clearTimeout(timer);
   }, [successMessage]);
 
-  const handleInputChange = (
-    field: keyof ProfileFormData,
-    value: string,
-  ) => {
+  const handleInputChange = (field: keyof ProfileFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrorMessage(null);
   };
 
+  // ── Submit (create or update) ──────────────────────────────────────
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    // Validate graduation year if provided
     let gradYearNumber: number | undefined = undefined;
     if (formData.graduation_year.trim()) {
       const parsedYear = Number(formData.graduation_year.trim());
       if (Number.isNaN(parsedYear) || !Number.isInteger(parsedYear)) {
-        setErrorMessage(
-          'Graduation year must be a valid whole number (e.g. 2027).',
-        );
+        setErrorMessage('Graduation year must be a valid whole number (e.g. 2027).');
         return;
       }
       if (parsedYear < 1950 || parsedYear > 2060) {
-        setErrorMessage(
-          'Please enter a realistic graduation year between 1950 and 2060.',
-        );
+        setErrorMessage('Please enter a realistic graduation year between 1950 and 2060.');
         return;
       }
       gradYearNumber = parsedYear;
@@ -154,36 +225,31 @@ export default function ProfilePage() {
 
     try {
       if (isExisting) {
-        // Update existing profile
         const res = await updateMutation.mutateAsync({ data: payload });
         if (res.success) {
           setSuccessMessage('Student profile updated successfully.');
-          await queryClient.invalidateQueries({
-            queryKey: getGetStudentProfileQueryKey(),
-          });
+          await queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
           refetch();
         }
       } else {
-        // Create new profile
         const res = await createMutation.mutateAsync({ data: payload });
         if (res.success) {
           setSuccessMessage('Student profile created successfully.');
-          await queryClient.invalidateQueries({
-            queryKey: getGetStudentProfileQueryKey(),
-          });
+          await queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
           refetch();
         }
       }
     } catch (err: unknown) {
       const apiErr = err as { message?: string; data?: { message?: string } };
-      const msg =
+      setErrorMessage(
         apiErr.data?.message ||
-        apiErr.message ||
-        'Unable to save profile. Please check your data and try again.';
-      setErrorMessage(msg);
+          apiErr.message ||
+          'Unable to save profile. Please check your data and try again.',
+      );
     }
   };
 
+  // ── Delete ─────────────────────────────────────────────────────────
   const handleDelete = async () => {
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -193,26 +259,20 @@ export default function ProfilePage() {
         setSuccessMessage('Student profile deleted successfully.');
         setFormData(emptyForm);
         setShowDeleteConfirm(false);
-        await queryClient.invalidateQueries({
-          queryKey: getGetStudentProfileQueryKey(),
-        });
+        await queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
         refetch();
       }
     } catch (err: unknown) {
       const apiErr = err as { message?: string; data?: { message?: string } };
-      const msg =
-        apiErr.data?.message ||
-        apiErr.message ||
-        'Unable to delete profile. Please try again.';
-      setErrorMessage(msg);
+      setErrorMessage(
+        apiErr.data?.message || apiErr.message || 'Unable to delete profile. Please try again.',
+      );
       setShowDeleteConfirm(false);
     }
   };
 
   const isSubmitting =
-    createMutation.isPending ||
-    updateMutation.isPending ||
-    deleteMutation.isPending;
+    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const getInitials = (name?: string) => {
     if (!name) return 'ST';
@@ -221,23 +281,28 @@ export default function ProfilePage() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  // 1. Unauthenticated View
+  const interestTags = formData.interests
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  /* ── 1. Unauthenticated ──────────────────────────────────────────── */
   if (!authLoading && !user) {
     return (
-      <main className="profile-page-container max-w-2xl mx-auto py-12 text-center space-y-6">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+      <main className="flex flex-col items-center justify-center py-20 px-4 text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-xs">
           <UserRound className="w-8 h-8" />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 max-w-md">
           <Badge variant="outline" className="text-xs uppercase tracking-wider">
             Authentication Required
           </Badge>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
             Sign In to Manage Profile
           </h1>
-          <p className="text-muted-foreground text-sm sm:text-base max-w-md mx-auto">
-            Your student profile helps CareerPath AI recommend tailored skill
-            paths and career trajectories based on your studies and interests.
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Your student profile helps CareerPath AI recommend tailored skill paths and career
+            trajectories based on your studies and interests.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -260,55 +325,52 @@ export default function ProfilePage() {
     );
   }
 
-  // 2. Loading State
+  /* ── 2. Loading skeleton ─────────────────────────────────────────── */
   if (authLoading || (user && profileLoading)) {
     return (
-      <main className="profile-page-container space-y-6">
-        <div className="flex flex-col gap-2 animate-pulse">
-          <div className="h-4 w-32 bg-muted rounded-md" />
-          <div className="h-8 w-64 bg-muted rounded-md" />
+      <main className="space-y-8">
+        {/* Header skeleton */}
+        <div className="flex flex-col gap-3 animate-pulse">
+          <div className="h-3 w-24 bg-muted rounded-md" />
+          <div className="h-8 w-72 bg-muted rounded-md" />
           <div className="h-4 w-96 bg-muted rounded-md" />
         </div>
+        {/* Two-column skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-7 h-96 rounded-2xl bg-card border border-border animate-pulse p-6" />
-          <div className="lg:col-span-5 h-96 rounded-2xl bg-card border border-border animate-pulse p-6" />
+          <div className="lg:col-span-7 h-[480px] rounded-2xl bg-card border border-border animate-pulse" />
+          <div className="lg:col-span-5 space-y-6">
+            <div className="h-64 rounded-2xl bg-card border border-border animate-pulse" />
+            <div className="h-44 rounded-2xl bg-card border border-border animate-pulse" />
+          </div>
         </div>
       </main>
     );
   }
 
-  // Split interests into tags for preview
-  const interestTags = formData.interests
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
+  /* ── 3. Main page ────────────────────────────────────────────────── */
   return (
-    <main className="profile-page-container space-y-8">
-      {/* Page Header */}
-      <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-border/60">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold tracking-wider uppercase text-primary">
-              Student Story
+    <main className="space-y-8 max-w-5xl">
+
+      {/* ── Page header ─────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6 border-b border-border">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">
+              Student Profile
             </span>
-            <span className="text-muted-foreground/60">·</span>
-            <span className="text-xs text-muted-foreground">
-              Career Foundation
-            </span>
+            <span className="text-muted-foreground/50 select-none">·</span>
+            <span className="text-xs text-muted-foreground">Career Foundation</span>
           </div>
-
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            Start with what makes you, you.
+            Start with what makes you, <em className="not-italic text-primary">you.</em>
           </h1>
-
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 max-w-2xl">
-            A few details put your studies, experience, and interests in context
-            for AI-driven guidance and learning roadmaps.
+          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+            A few details put your studies, experience, and interests in context for AI-driven
+            guidance and personalised learning roadmaps.
           </p>
         </div>
 
-        {/* Status indicator badges */}
+        {/* Status chip */}
         <div className="flex items-center gap-3 shrink-0 flex-wrap">
           {isExisting ? (
             <span
@@ -317,7 +379,8 @@ export default function ProfilePage() {
               data-testid="status-profile-exists"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Profile Active · {existingProfile?.institution || 'Student'}
+              Profile Active
+              {existingProfile?.institution ? ` · ${existingProfile.institution}` : ''}
             </span>
           ) : (
             <span
@@ -333,17 +396,16 @@ export default function ProfilePage() {
           {existingProfile?.updated_at && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" />
-              Updated:{' '}
-              {new Date(existingProfile.updated_at).toLocaleDateString()}
+              Updated {new Date(existingProfile.updated_at).toLocaleDateString()}
             </span>
           )}
         </div>
-      </section>
+      </div>
 
-      {/* Success Notification */}
+      {/* ── Success / Error banners ──────────────────────────────────── */}
       {successMessage && (
         <div
-          className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 flex items-center gap-3"
+          className="flex items-center gap-3 p-4 rounded-xl border border-emerald-500/25 bg-emerald-500/8 text-emerald-800 dark:text-emerald-300"
           role="status"
           data-testid="notice-profile-success"
         >
@@ -352,10 +414,9 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Error Notification */}
       {errorMessage && (
         <div
-          className="p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-3"
+          className="flex items-center gap-3 p-4 rounded-xl border border-destructive/25 bg-destructive/8 text-destructive"
           role="alert"
           data-testid="notice-profile-error"
         >
@@ -364,24 +425,21 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Delete Confirmation Alert Banner */}
+      {/* ── Delete confirmation dialog ───────────────────────────────── */}
       {showDeleteConfirm && (
         <div
-          className="p-5 rounded-2xl border border-destructive/40 bg-destructive/5 space-y-3"
+          className="p-5 rounded-2xl border border-destructive/35 bg-destructive/5 space-y-3"
           role="alertdialog"
           aria-labelledby="delete-confirm-title"
           data-testid="dialog-delete-confirm"
         >
-          <div className="flex items-center gap-2 text-destructive font-bold text-sm sm:text-base">
+          <div className="flex items-center gap-2 text-destructive font-bold text-sm">
             <Trash2 className="w-5 h-5" />
-            <span id="delete-confirm-title">
-              Are you sure you want to delete your profile?
-            </span>
+            <span id="delete-confirm-title">Are you sure you want to delete your profile?</span>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-xl">
-            This will permanently remove your educational background,
-            interests, and bio. Your account credentials and login will remain
-            active.
+            This will permanently remove your educational background, interests, and bio. Your
+            account credentials and login will remain active.
           </p>
           <div className="flex items-center gap-3 pt-1">
             <button
@@ -391,7 +449,7 @@ export default function ProfilePage() {
               disabled={isSubmitting}
               data-testid="button-confirm-delete"
             >
-              {isSubmitting ? 'Deleting...' : 'Yes, delete profile'}
+              {isSubmitting ? 'Deleting…' : 'Yes, delete profile'}
             </button>
             <button
               type="button"
@@ -406,221 +464,156 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Main Dual-Column Content */}
+      {/* ── Two-column layout ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column (7/12): Main Profile Form Card */}
-        <div className="lg:col-span-7 rounded-2xl border border-border bg-card text-card-foreground p-6 sm:p-8 shadow-xs space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-border/60">
+
+        {/* ══ LEFT COLUMN – Profile form card ══════════════════════════ */}
+        <div className="lg:col-span-7 rounded-2xl border border-border bg-card text-card-foreground shadow-xs overflow-hidden">
+          {/* Card header */}
+          <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-border bg-muted/30">
             <div>
-              <span className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground">
-                {isExisting
-                  ? 'Manage your information'
-                  : 'Create your student profile'}
-              </span>
-              <h2 className="text-xl font-bold text-foreground mt-0.5">
+              <p className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">
+                {isExisting ? 'Manage your information' : 'Create your student profile'}
+              </p>
+              <h2 className="text-lg font-bold text-foreground mt-0.5">
                 {isExisting ? 'Edit Profile' : 'New Profile'}
               </h2>
             </div>
             {existingProfile?.id && (
-              <span className="text-[11px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+              <span className="text-[11px] font-mono text-muted-foreground bg-muted px-2.5 py-1 rounded-lg border border-border">
                 ID: {existingProfile.id.slice(0, 8)}…
               </span>
             )}
           </div>
 
+          {/* Form body */}
           <form
             onSubmit={handleSubmit}
-            className="space-y-6"
+            className="p-6 sm:p-8 space-y-6"
             data-testid="form-student-profile"
           >
-            {/* Section 1: Account Context (Read-Only) */}
-            <div className="space-y-1.5">
-              <label
-                className="flex items-center justify-between text-xs font-semibold text-foreground"
+            {/* Full Name – read-only */}
+            <div>
+              <FieldLabel
                 htmlFor="field-name"
+                hint="Read-only from account"
               >
-                <span>Full Name</span>
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-normal">
-                  <Lock className="w-3 h-3 text-muted-foreground" /> Read-only
-                  from account
-                </span>
-              </label>
-              <input
+                Full Name
+              </FieldLabel>
+              <FormInput
                 id="field-name"
-                type="text"
                 value={user?.name ?? ''}
                 disabled
                 readOnly
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-muted/60 text-muted-foreground cursor-not-allowed select-none font-medium"
                 data-testid="input-profile-name"
               />
             </div>
 
-            {/* Section 2: Education Level & Institution */}
+            {/* Education Level + Institution */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label
-                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
-                  htmlFor="field-education-level"
-                >
-                  <GraduationCap className="w-3.5 h-3.5 text-primary" />
+              <div>
+                <FieldLabel htmlFor="field-education-level" icon={GraduationCap}>
                   Education Level
-                </label>
-                <input
+                </FieldLabel>
+                <FormInput
                   id="field-education-level"
-                  type="text"
-                  placeholder="e.g. Undergraduate, High School, M.S."
+                  placeholder="e.g. Undergraduate, M.S., Diploma"
                   value={formData.education_level}
-                  onChange={(e) =>
-                    handleInputChange('education_level', e.target.value)
-                  }
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                  onChange={(e) => handleInputChange('education_level', e.target.value)}
                   data-testid="input-profile-education-level"
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <label
-                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
-                  htmlFor="field-institution"
-                >
-                  <Building2 className="w-3.5 h-3.5 text-primary" />
+              <div>
+                <FieldLabel htmlFor="field-institution" icon={Building2}>
                   Institution / College
-                </label>
-                <input
+                </FieldLabel>
+                <FormInput
                   id="field-institution"
-                  type="text"
-                  placeholder="e.g. Stanford University, ABC College"
+                  placeholder="e.g. Stanford University"
                   value={formData.institution}
-                  onChange={(e) =>
-                    handleInputChange('institution', e.target.value)
-                  }
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                  onChange={(e) => handleInputChange('institution', e.target.value)}
                   data-testid="input-profile-institution"
                 />
               </div>
             </div>
 
-            {/* Section 3: Degree & Branch */}
+            {/* Degree + Branch */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label
-                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
-                  htmlFor="field-degree"
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-primary" />
+              <div>
+                <FieldLabel htmlFor="field-degree" icon={BookOpen}>
                   Degree
-                </label>
-                <input
+                </FieldLabel>
+                <FormInput
                   id="field-degree"
-                  type="text"
                   placeholder="e.g. B.Tech, B.S., M.S., Diploma"
                   value={formData.degree}
-                  onChange={(e) =>
-                    handleInputChange('degree', e.target.value)
-                  }
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                  onChange={(e) => handleInputChange('degree', e.target.value)}
                   data-testid="input-profile-degree"
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <label
-                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
-                  htmlFor="field-branch"
-                >
-                  <Layers className="w-3.5 h-3.5 text-primary" />
+              <div>
+                <FieldLabel htmlFor="field-branch" icon={Layers}>
                   Branch / Major
-                </label>
-                <input
+                </FieldLabel>
+                <FormInput
                   id="field-branch"
-                  type="text"
-                  placeholder="e.g. Computer Science, Mechanical"
+                  placeholder="e.g. Computer Science"
                   value={formData.branch}
-                  onChange={(e) =>
-                    handleInputChange('branch', e.target.value)
-                  }
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                  onChange={(e) => handleInputChange('branch', e.target.value)}
                   data-testid="input-profile-branch"
                 />
               </div>
             </div>
 
-            {/* Section 4: Graduation Year */}
-            <div className="space-y-1.5">
-              <label
-                className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
-                htmlFor="field-graduation-year"
-              >
-                <Calendar className="w-3.5 h-3.5 text-primary" />
+            {/* Graduation Year */}
+            <div>
+              <FieldLabel htmlFor="field-graduation-year" icon={Calendar}>
                 Graduation Year
-              </label>
-              <input
+              </FieldLabel>
+              <FormInput
                 id="field-graduation-year"
                 type="number"
                 placeholder="e.g. 2027"
                 min="1950"
                 max="2060"
                 value={formData.graduation_year}
-                onChange={(e) =>
-                  handleInputChange('graduation_year', e.target.value)
-                }
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                onChange={(e) => handleInputChange('graduation_year', e.target.value)}
                 data-testid="input-profile-graduation-year"
               />
             </div>
 
-            {/* Section 5: Interests & Curiosities */}
-            <div className="space-y-1.5">
-              <label
-                className="flex items-center justify-between text-xs font-semibold text-foreground"
-                htmlFor="field-interests"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-accent" />
-                  Interests & Fields of Curiosity
-                </span>
-                <span className="text-[11px] text-muted-foreground font-normal">
-                  Comma-separated
-                </span>
-              </label>
-              <input
+            {/* Interests */}
+            <div>
+              <FieldLabel htmlFor="field-interests" icon={Sparkles} hint="Comma-separated">
+                Interests &amp; Fields of Curiosity
+              </FieldLabel>
+              <FormInput
                 id="field-interests"
-                type="text"
-                placeholder="e.g. Artificial Intelligence, Web Development, Robotics, FinTech"
+                placeholder="e.g. AI, Web Development, Robotics, FinTech"
                 value={formData.interests}
-                onChange={(e) =>
-                  handleInputChange('interests', e.target.value)
-                }
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                onChange={(e) => handleInputChange('interests', e.target.value)}
                 data-testid="input-profile-interests"
               />
             </div>
 
-            {/* Section 6: Bio & Aspirations */}
-            <div className="space-y-1.5">
-              <label
-                className="flex items-center justify-between text-xs font-semibold text-foreground"
-                htmlFor="field-bio"
-              >
-                <span>Bio & Aspirations</span>
-                <span className="text-[11px] text-muted-foreground font-normal">
-                  Short summary
-                </span>
-              </label>
+            {/* Bio */}
+            <div>
+              <FieldLabel htmlFor="field-bio" hint="Short summary">
+                Bio &amp; Aspirations
+              </FieldLabel>
               <textarea
                 id="field-bio"
                 rows={4}
-                placeholder="Tell us a little about your journey, interests, or what you hope to achieve in your career..."
+                placeholder="Tell us a little about your journey, interests, or what you hope to achieve in your career…"
                 value={formData.bio}
                 onChange={(e) => handleInputChange('bio', e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
                 data-testid="input-profile-bio"
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 hover:border-primary/30 transition-all resize-y"
               />
             </div>
 
-            {/* Action Buttons Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-border/60">
+            {/* Action buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border">
               <button
                 type="submit"
                 className="button button-primary min-w-[150px] flex items-center justify-center gap-2 text-sm py-2.5 px-5"
@@ -630,14 +623,12 @@ export default function ProfilePage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving...</span>
+                    <span>Saving…</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    <span>
-                      {isExisting ? 'Save changes' : 'Create profile'}
-                    </span>
+                    <span>{isExisting ? 'Save changes' : 'Create profile'}</span>
                   </>
                 )}
               </button>
@@ -658,22 +649,26 @@ export default function ProfilePage() {
           </form>
         </div>
 
-        {/* Right Column (5/12): Live Snapshot & AI Context */}
-        <div className="lg:col-span-5 space-y-6">
-          {/* Live Preview Snapshot Card */}
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-border/60">
-              <span className="text-[11px] font-bold tracking-wider uppercase text-muted-foreground">
+        {/* ══ RIGHT COLUMN – Preview + AI info ════════════════════════ */}
+        <div className="lg:col-span-5 space-y-5">
+
+          {/* Live Student Snapshot card */}
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            {/* Card header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/30">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                 Live Preview
               </span>
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary" className="text-[10px] rounded-full">
                 Student Snapshot
               </Badge>
             </div>
 
-            <div className="p-4 rounded-xl border border-border/70 bg-background/60 space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11 border border-border">
+            {/* Snapshot body */}
+            <div className="p-5 space-y-5">
+              {/* Avatar + name */}
+              <div className="flex items-center gap-3.5">
+                <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-xs">
                   <AvatarFallback className="bg-primary/15 text-primary font-bold text-sm">
                     {getInitials(user?.name)}
                   </AvatarFallback>
@@ -688,113 +683,188 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2 border-t border-border/40 text-xs">
+              {/* Education */}
+              <div className="space-y-2 pt-2 border-t border-border/50 text-xs">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
                     Education
                   </span>
-                  <div className="font-semibold text-foreground">
-                    {formData.degree || formData.education_level
-                      ? `${formData.degree || ''} ${
-                          formData.branch ? `in ${formData.branch}` : ''
-                        }`
-                      : 'Degree / Branch not specified'}
+                  <div className="font-semibold text-foreground text-sm">
+                    {formData.degree || formData.education_level ? (
+                      <>
+                        {formData.degree || formData.education_level}
+                        {formData.branch ? (
+                          <span className="text-muted-foreground font-normal">
+                            {' '}in {formData.branch}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground font-normal">Degree not specified</span>
+                    )}
                   </div>
                   <div className="text-muted-foreground mt-0.5">
-                    {formData.institution || 'Institution not specified'}
-                    {formData.graduation_year
-                      ? ` · Class of ${formData.graduation_year}`
-                      : ''}
+                    {formData.institution ? (
+                      <>
+                        {formData.institution}
+                        {formData.graduation_year ? ` · Class of ${formData.graduation_year}` : ''}
+                      </>
+                    ) : (
+                      'Institution not specified'
+                    )}
                   </div>
                 </div>
 
+                {/* Interest tags */}
                 {interestTags.length > 0 && (
-                  <div>
+                  <div className="pt-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
                       Interests
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {interestTags.map((tag, idx) => (
+                      {interestTags.slice(0, 8).map((tag, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-primary border border-primary/20"
+                          className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20"
                         >
                           {tag}
                         </span>
                       ))}
+                      {interestTags.length > 8 && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border border-border">
+                          +{interestTags.length - 8} more
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
 
+                {/* Bio */}
                 {formData.bio && (
-                  <div>
+                  <div className="pt-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                      Bio & Aspirations
+                      Bio
                     </span>
-                    <p className="text-xs text-muted-foreground italic leading-relaxed border-l-2 border-primary/40 pl-2.5 my-1">
+                    <p className="text-xs text-muted-foreground italic leading-relaxed border-l-2 border-primary/40 pl-3 my-1">
                       "{formData.bio}"
                     </p>
                   </div>
                 )}
               </div>
-            </div>
 
-            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>
-                Your profile is private and directly contextualizes AI roadmaps
-                and skill gap analyses.
-              </span>
+              {/* Privacy note */}
+              <div className="flex items-start gap-2 text-[11px] text-muted-foreground pt-2 border-t border-border/50">
+                <Shield className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  Your profile is private and directly contextualises AI roadmaps and skill-gap analyses.
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* AI Career Alignment Info Card */}
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 space-y-3">
-            <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
+          {/* AI Career Alignment info card */}
+          <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shadow-xs shrink-0">
+                <Sparkles className="w-4.5 h-4.5" />
               </span>
-              <h3 className="text-sm font-bold text-foreground">
+              <h3 className="text-sm font-bold text-foreground leading-snug">
                 How CareerPath AI uses your profile
               </h3>
             </div>
-            <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed">
-              <li className="flex items-start gap-2">
-                <span className="text-primary font-bold">•</span>
-                <span>
-                  <strong className="text-foreground">Degree & Major:</strong>{' '}
-                  Identifies foundation skills to avoid redundant beginner
-                  steps.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary font-bold">•</span>
-                <span>
-                  <strong className="text-foreground">Graduation Year:</strong>{' '}
-                  Calibrates the pacing of weekly milestones for campus or
-                  placement deadlines.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary font-bold">•</span>
-                <span>
-                  <strong className="text-foreground">Interests:</strong>{' '}
-                  Recommends specialized electives and portfolio project ideas.
-                </span>
-              </li>
+
+            <ul className="space-y-2.5">
+              {[
+                {
+                  icon: GraduationCap,
+                  label: 'Degree & Major',
+                  detail: 'Identifies foundation skills to skip redundant beginner steps.',
+                },
+                {
+                  icon: Calendar,
+                  label: 'Graduation Year',
+                  detail: 'Calibrates milestone pacing for campus or placement deadlines.',
+                },
+                {
+                  icon: Sparkles,
+                  label: 'Interests',
+                  detail: 'Recommends specialised electives and portfolio project ideas.',
+                },
+              ].map(({ icon: Icon, label, detail }) => (
+                <li key={label} className="flex items-start gap-2.5 text-xs">
+                  <Icon className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-foreground">{label}:</strong>{' '}
+                    <span className="text-muted-foreground">{detail}</span>
+                  </span>
+                </li>
+              ))}
             </ul>
 
             <div className="pt-2 border-t border-primary/10 flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Ready for next steps?</span>
               <Link
                 href="/skills"
-                className="text-primary font-semibold hover:underline flex items-center gap-1"
+                className="text-primary font-semibold hover:underline flex items-center gap-1 no-underline"
               >
                 <span>Add Skills</span>
-                <ArrowRight className="w-3 h-3" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
+
+          {/* Profile completeness card */}
+          {isExisting && (
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <BadgeCheck className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold text-foreground">Profile Completeness</span>
+              </div>
+              {(() => {
+                const fields = [
+                  { label: 'Education Level', filled: Boolean(formData.education_level) },
+                  { label: 'Institution', filled: Boolean(formData.institution) },
+                  { label: 'Degree', filled: Boolean(formData.degree) },
+                  { label: 'Branch / Major', filled: Boolean(formData.branch) },
+                  { label: 'Graduation Year', filled: Boolean(formData.graduation_year) },
+                  { label: 'Interests', filled: interestTags.length > 0 },
+                  { label: 'Bio', filled: Boolean(formData.bio) },
+                ];
+                const filled = fields.filter((f) => f.filled).length;
+                const pct = Math.round((filled / fields.length) * 100);
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{filled}/{fields.length} fields filled</span>
+                      <span
+                        className={`font-bold ${pct === 100 ? 'text-emerald-600 dark:text-emerald-400' : pct >= 50 ? 'text-primary' : 'text-amber-600 dark:text-amber-400'}`}
+                      >
+                        {pct}%
+                      </span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-primary' : 'bg-amber-500'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {pct < 100 && (
+                      <ul className="space-y-0.5 pt-0.5">
+                        {fields
+                          .filter((f) => !f.filled)
+                          .map((f) => (
+                            <li key={f.label} className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                              <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0" />
+                              {f.label}
+                            </li>
+                          ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </div>
     </main>
