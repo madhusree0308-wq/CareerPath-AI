@@ -24,7 +24,9 @@
       "bcrypt",
       "esbuild",
       "msw",
-      "unrs-resolver"
+      "unrs-resolver",
+      "@google/genai",
+      "protobufjs"
     ]
   }
 }

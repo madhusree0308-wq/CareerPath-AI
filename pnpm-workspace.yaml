@@ -25,6 +25,10 @@
 #     - typescript
 #
 # ============================================================================
+onlyBuiltDependencies:
+  - '@google/genai'
+  - protobufjs
+
 minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
@@ -147,6 +151,3 @@ allowBuilds:
   bcrypt: true
   esbuild: true
   protobufjs: set this to true or false
-onlyBuiltDependencies:
-  - '@google/genai'
-  - protobufjs
