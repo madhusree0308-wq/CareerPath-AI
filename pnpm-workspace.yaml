@@ -25,9 +25,15 @@
 #     - typescript
 #
 # ============================================================================
-onlyBuiltDependencies:
-  - '@google/genai'
-  - protobufjs
+
+allowBuilds:
+  '@google/genai': true
+  protobufjs: true
+  '@swc/core': true
+  bcrypt: true
+  esbuild: true
+  msw: true
+  unrs-resolver: true
 
 minimumReleaseAge: 1440
 
@@ -145,9 +151,3 @@ overrides:
   esbuild: "0.28.2"
   # orval pins js-yaml to an exact version older than the CVE fix (>=4.3.2)
   js-yaml: '4.3.2'
-
-allowBuilds:
-  '@google/genai': set this to true or false
-  bcrypt: true
-  esbuild: true
-  protobufjs: set this to true or false
