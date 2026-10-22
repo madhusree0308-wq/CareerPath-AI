@@ -32,6 +32,46 @@ function parseJsonResponse(text: string): unknown {
     return JSON.parse(cleaned);
 }
 
+/**
+ * Detects quota and temporary availability errors returned by Gemini.
+ * Google SDK errors may contain a JSON-encoded error message.
+ */
+function getGeminiUpstreamStatus(error: unknown): number | undefined {
+    const message =
+        error instanceof Error ? error.message : String(error);
+
+    // Some SDK errors contain the upstream HTTP status in their message.
+    const statusMatch = message.match(
+        /"code"\s*:\s*(\d+)|\bHTTP(?:\s+status)?\s*[:=]?\s*(\d{3})\b/i,
+    );
+
+    if (statusMatch) {
+        const status = Number(statusMatch[1] ?? statusMatch[2]);
+
+        if (status === 429 || status === 503) {
+            return status;
+        }
+    }
+
+    if (
+        /\b429\b|RESOURCE_EXHAUSTED|quota exceeded|rate.?limit/i.test(
+            message,
+        )
+    ) {
+        return 429;
+    }
+
+    if (
+        /\b503\b|UNAVAILABLE|high demand|temporarily unavailable/i.test(
+            message,
+        )
+    ) {
+        return 503;
+    }
+
+    return undefined;
+}
+
 async function generateWithGemini(prompt: string): Promise<string> {
     let lastError: unknown;
 
@@ -52,16 +92,15 @@ async function generateWithGemini(prompt: string): Promise<string> {
         } catch (error) {
             lastError = error;
 
-            const message =
-                error instanceof Error ? error.message : String(error);
+            const upstreamStatus = getGeminiUpstreamStatus(error);
 
-            // Quota/rate-limit errors will not be fixed by an immediate retry.
-            if (
-                /\b429\b|RESOURCE_EXHAUSTED|quota exceeded|rate.?limit/i.test(
-                    message,
-                )
-            ) {
+            // Immediate retries will not resolve quota or availability errors.
+            if (upstreamStatus === 429) {
                 throw new Error("GEMINI_QUOTA_EXCEEDED");
+            }
+
+            if (upstreamStatus === 503) {
+                throw new Error("GEMINI_TEMPORARILY_UNAVAILABLE");
             }
 
             if (attempt < 3) {
@@ -249,21 +288,35 @@ Do not invent qualifications or skills that are not supported by the data.
 
         res.status(201).json({ success: true, analysis: data });
     } catch (error) {
+        const errorMessage =
+            error instanceof Error ? error.message : String(error);
+
         req.log.error(
             {
-                errorType: error instanceof Error ? error.name : "UnknownError",
+                errorType:
+                    error instanceof Error ? error.name : "UnknownError",
+                errorMessage,
             },
             "Gemini career analysis failed",
         );
 
-        if (
-            error instanceof Error &&
-            error.message === "GEMINI_QUOTA_EXCEEDED"
-        ) {
+        if (errorMessage === "GEMINI_QUOTA_EXCEEDED") {
             sendError(
                 res,
                 429,
                 "Gemini AI usage limit reached. Please try again after your quota resets.",
+            );
+            return;
+        }
+
+        if (
+            errorMessage === "GEMINI_TEMPORARILY_UNAVAILABLE" ||
+            getGeminiUpstreamStatus(error) === 503
+        ) {
+            sendError(
+                res,
+                503,
+                "Gemini is temporarily unavailable due to high demand. Please try again later.",
             );
             return;
         }
@@ -585,21 +638,38 @@ Requirements:
             analysis: savedAnalysis ?? null,
         });
     } catch (error) {
+        const errorMessage =
+            error instanceof Error ? error.message : String(error);
+
         req.log.error(
             {
-                errorType: error instanceof Error ? error.name : "UnknownError",
+                errorType:
+                    error instanceof Error ? error.name : "UnknownError",
+                errorMessage,
             },
             "Gemini roadmap generation failed",
         );
 
         if (
-            error instanceof Error &&
-            error.message === "GEMINI_QUOTA_EXCEEDED"
+            errorMessage === "GEMINI_QUOTA_EXCEEDED" ||
+            getGeminiUpstreamStatus(error) === 429
         ) {
             sendError(
                 res,
                 429,
                 "Gemini AI usage limit reached. Please try again after your quota resets.",
+            );
+            return;
+        }
+
+        if (
+            errorMessage === "GEMINI_TEMPORARILY_UNAVAILABLE" ||
+            getGeminiUpstreamStatus(error) === 503
+        ) {
+            sendError(
+                res,
+                503,
+                "Gemini is temporarily unavailable due to high demand. Please try again later.",
             );
             return;
         }
